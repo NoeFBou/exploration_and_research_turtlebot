@@ -45,4 +45,21 @@ source /opt/ros/humble/setup.bash
 colcon build --symlink-install
 ```
 
+## Lancement
+
+1er terminal pour lancer l'exploration automatique
+```bash
+cd ~/ros2_ws
+source install/setup.bash
+ros2 launch tb3_autonomy auto_explore.launch.py
+```
+
+2eme terminal pour activer la caméra pour l'ia
+```bash
+cd ~/ros2_ws
+source install/setup.bash
+ros2 run tb3_autonomy camera_ai_processor
+```
+
+
 
