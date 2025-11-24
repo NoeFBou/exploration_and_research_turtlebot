@@ -58,7 +58,7 @@ ros2 launch tb3_autonomy auto_explore.launch.py
 ```bash
 cd ~/ros2_ws
 source install/setup.bash
-ros2 run tb3_autonomy camera_ai_processor
+ros2 run tb3_autonomy camera_ai
 ```
 
 
