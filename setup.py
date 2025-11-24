@@ -1,4 +1,6 @@
-from setuptools import find_packages, setup
+from setuptools import setup
+import os
+from glob import glob
 
 package_name = 'tb3_autonomy'
 
@@ -10,20 +12,20 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        # AJOUTER CES LIGNES :
-        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
+(os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*.sdf')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='nono',
-    maintainer_email='noe@keflo.org',
+    maintainer='sacha',
+    maintainer_email='sacha@todo.todo',
     description='Projet exploration Turtlebot3',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'supervisor = tb3_autonomy.mission_supervisor:main',
+'camera_ai = tb3_autonomy.camera_processor:main',
         ],
     },
 )

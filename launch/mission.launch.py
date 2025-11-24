@@ -1,77 +1,90 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
 def generate_launch_description():
+    # --- 0. Configuration ---
+    use_sim_time = 'true'
+    
     # Chemins
     pkg_tb3_gazebo = get_package_share_directory('turtlebot3_gazebo')
-    pkg_tb3_nav2 = get_package_share_directory('turtlebot3_navigation2')
+    pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
     pkg_project = get_package_share_directory('tb3_autonomy')
-
-    # Configuration
-    use_sim_time = True
     
-    # 1. Lancer Gazebo avec ton monde .sdf
-    # Note: Turtlebot3 utilise souvent 'empty_world.launch.py' et passe le world en argument
-    # ou 'turtlebot3_world.launch.py'. Adaptons pour ton SDF.
-    gazebo_cmd = IncludeLaunchDescription(
+    nav2_params_path = os.path.join(pkg_nav2_bringup, 'params', 'nav2_params.yaml')
+
+    # Fix Graphique & ModËle (Toujours utile)
+    env_gl = SetEnvironmentVariable(name='LIBGL_ALWAYS_SOFTWARE', value='1')
+    env_lidar = SetEnvironmentVariable(name='LDS_MODEL', value='LDS-01')
+
+    # --- 1. Simulation (Gazebo + Robot + Laser) ---
+    # AU LIEU DE TOUT REFAIRE, ON APPELLE LE FICHIER OFFICIEL QUI MARCHE
+    # Il va lancer Gazebo, charger le monde par dÈfaut, spawner le robot ET activer le laser.
+    tb3_world_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_tb3_gazebo, 'launch', 'turtlebot3_world.launch.py')
         ),
-        # On remplace le monde par d√©faut par le tien (assure-toi que le SDF est valide)
-        # Si ton SDF ne charge pas le robot, il faudra utiliser spawn_entity s√©par√©ment.
-        # Pour simplifier ici, on suppose que ton SDF est un monde (murs) et le launch TB3 ajoute le robot.
-        # Sinon, utilise simplement le launch file standard et change juste le chemin 'world'.
-    )
-
-    # 2. Navigation2 + SLAM (Simultaneous Localization and Mapping)
-    # On met 'slam': 'True' pour que le robot cartographie en bougeant
-    nav2_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_tb3_nav2, 'launch', 'navigation2.launch.py')
-        ),
         launch_arguments={
-            'use_sim_time': str(use_sim_time),
-            'slam': 'True',
-            'params_file': os.path.join(pkg_tb3_nav2, 'param', 'waffle.yaml') # ou burger.yaml
+            'use_sim_time': use_sim_time,
+            'x_pose': '-2.0', # On peut surcharger la position ici !
+            'y_pose': '-0.5'
         }.items()
     )
 
-    # 3. Explore Lite (L'algorithme frontier-based exploration)
+    # --- 2. Navigation & SLAM ---
+    slam_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_nav2_bringup, 'launch', 'slam_launch.py')
+        ),
+        launch_arguments={'use_sim_time': use_sim_time, 'params_file': nav2_params_path}.items()
+    )
+
+    navigation_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_nav2_bringup, 'launch', 'navigation_launch.py')
+        ),
+        launch_arguments={
+            'use_sim_time': use_sim_time, 
+            'params_file': nav2_params_path,
+            'log_level': 'warn'
+        }.items()
+    )
+
+    # --- 3. Outils ---
+    rviz_cmd = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', os.path.join(pkg_nav2_bringup, 'rviz', 'nav2_default_view.rviz')],
+        parameters=[{'use_sim_time': True}],
+        output='screen'
+    )
+
     explore_cmd = Node(
         package='explore_lite',
         executable='explore',
         name='explore_node',
         output='screen',
-        parameters=[{
-            'robot_base_frame': 'base_link',
-            'costmap_topic': '/map',
-            'visualize': True,
-            'planner_frequency': 0.33,
-            'progress_timeout': 30.0,
-            'potential_scale': 3.0,
-            'orientation_scale': 0.0,
-            'gain_scale': 1.0,
-            'transform_tolerance': 0.3,
-            'min_frontier_size': 0.75,
-        }]
+        parameters=[{'use_sim_time': True, 'visualize': True}]
     )
 
-    # 4. Ton Superviseur
     supervisor_cmd = Node(
         package='tb3_autonomy',
         executable='supervisor',
         name='mission_supervisor',
         output='screen',
-        emulate_tty=True # Pour voir les print() et input() dans la console
+        emulate_tty=True
     )
 
     return LaunchDescription([
-        gazebo_cmd,
-        nav2_cmd,
+        env_gl, env_lidar,
+        tb3_world_cmd,  # Le socle solide
+        slam_cmd,
+        navigation_cmd,
+        rviz_cmd,
         explore_cmd,
         supervisor_cmd
     ])
