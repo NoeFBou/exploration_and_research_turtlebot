@@ -1,5 +1,11 @@
 # Projet TB3
 
+## archi WIP 
+
+
+![archi de notre apli](resource/archi.jpg)
+
+
 ## Prérequis Système
 
 * **OS :** Ubuntu 22.04 LTS (Jammy Jellyfish)
