@@ -33,7 +33,7 @@ sudo apt install python3-colcon-common-extensions -y
 ```bash
 sudo apt update
 sudo apt install ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox -y
-sudo apt install ros-humble-turtlebot3 -y
+sudo apt install ros-humble-turtlebot3 ros-humble-turtlebot3-gazebo -y
 sudo apt install python3-pip python3-opencv ros-humble-cv-bridge ros-humble-vision-opencv -y
 cd ~/ros2_ws/src
 git clone https://github.com/robo-friends/m-explore-ros2.git
