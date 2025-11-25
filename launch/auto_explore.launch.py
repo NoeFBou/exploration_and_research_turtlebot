@@ -6,14 +6,10 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    # ==========================================
-    # 1. CONFIGURATION & VARIABLES (LE FIX)
-    # ==========================================
-    # On force le robot Waffle et son Lidar spécifique
+
     env_model = SetEnvironmentVariable(name='TURTLEBOT3_MODEL', value='waffle')
     env_lidar = SetEnvironmentVariable(name='LDS_MODEL', value='LDS-01')
     
-    # On force le rendu logiciel pour éviter les plantages VirtualBox
     env_gl = SetEnvironmentVariable(name='LIBGL_ALWAYS_SOFTWARE', value='1')
 
     use_sim_time = 'true'
@@ -22,14 +18,8 @@ def generate_launch_description():
     pkg_tb3_gazebo = get_package_share_directory('turtlebot3_gazebo')
     pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
     
-    # Fichier de paramètres Nav2 par défaut (très stable)
     nav2_params = os.path.join(pkg_nav2_bringup, 'params', 'nav2_params.yaml')
 
-    # ==========================================
-    # 2. LANCEMENT DE LA SIMULATION
-    # ==========================================
-    # On utilise le launch officiel qui gère tout (Gazebo + Robot + Spawning + TF)
-    # On décale le robot à x=-2.0 pour qu'il ne soit pas dans un pilier au départ
     gazebo_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_tb3_gazebo, 'launch', 'turtlebot3_world.launch.py')
@@ -41,10 +31,7 @@ def generate_launch_description():
         }.items()
     )
 
-    # ==========================================
-    # 3. LANCEMENT NAVIGATION & SLAM
-    # ==========================================
-    # SLAM (Cartographie en temps réel)
+    # SLAM (Cartographie en temps rÃ©el)
     slam_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_nav2_bringup, 'launch', 'slam_launch.py')
@@ -55,7 +42,7 @@ def generate_launch_description():
         }.items()
     )
 
-    # Navigation (Path Planning)
+    # Navigation
     navigation_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_nav2_bringup, 'launch', 'navigation_launch.py')
@@ -63,14 +50,12 @@ def generate_launch_description():
         launch_arguments={
             'use_sim_time': use_sim_time, 
             'params_file': nav2_params,
-            'log_level': 'warn' # Pour garder le terminal propre
+            'log_level': 'warn'
         }.items()
     )
 
-    # ==========================================
-    # 4. EXPLORATION AUTOMATIQUE
-    # ==========================================
-    # Explore Lite va démarrer dès qu'il reçoit la map du SLAM
+    
+    # Explore Lite va 
     explore_cmd = Node(
         package='explore_lite',
         executable='explore',
@@ -91,14 +76,11 @@ def generate_launch_description():
         }]
     )
 
-    # ==========================================
-    # 5. VISUALISATION (RVIZ)
-    # ==========================================
+    
     rviz_cmd = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
-        # On charge la config Nav2 par défaut qui est très bien faite
         arguments=['-d', os.path.join(pkg_nav2_bringup, 'rviz', 'nav2_default_view.rviz')],
         parameters=[{'use_sim_time': True}],
         output='screen'
