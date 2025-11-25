@@ -29,7 +29,8 @@ class CameraAIProcessor(Node):
             
 
             cv2.imshow("Vue du Robot", cv_image)
-            cv2.waitKey(1) 
+            cv2.waitKey(1)
+            #
 
         except Exception as e:
             self.get_logger().error(f'Erreur conversion image: {e}')
