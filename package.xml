@@ -11,7 +11,6 @@
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>nav2_simple_commander</depend>
-
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

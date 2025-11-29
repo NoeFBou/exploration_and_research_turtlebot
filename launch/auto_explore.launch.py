@@ -50,12 +50,12 @@ def generate_launch_description():
         launch_arguments={
             'use_sim_time': use_sim_time, 
             'params_file': nav2_params,
-            'log_level': 'warn'
+            'log_level': 'Fatal'
         }.items()
     )
 
     
-    # Explore Lite va 
+    # Explore Lite
     explore_cmd = Node(
         package='explore_lite',
         executable='explore',
@@ -86,6 +86,13 @@ def generate_launch_description():
         output='screen'
     )
 
+    supervisor = Node(
+        package='tb3_autonomy',
+        executable='supervisor_node',
+        name='supervisor_node',
+        output='screen'
+    )
+
     return LaunchDescription([
         env_model,
         env_lidar,
@@ -94,5 +101,6 @@ def generate_launch_description():
         slam_cmd,
         navigation_cmd,
         explore_cmd,
-        rviz_cmd
+        rviz_cmd,
+        supervisor
     ])
