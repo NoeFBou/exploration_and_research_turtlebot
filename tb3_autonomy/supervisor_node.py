@@ -13,7 +13,7 @@ class Supervisor(Node):
     def __init__(self):
         super().__init__('supervisor')
 
-        self.declare_parameter('scan_interval', 20.0)
+        self.declare_parameter('scan_interval', 80.0)
         self.interval = self.get_parameter('scan_interval').value
 
 

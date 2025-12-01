@@ -4,6 +4,8 @@ from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
+from launch.actions import GroupAction
+from launch_ros.actions import PushRosNamespace
 
 def generate_launch_description():
 
@@ -75,7 +77,24 @@ def generate_launch_description():
             'min_frontier_size': 0.75,
         }]
     )
+    pkg_stereo_image_proc = get_package_share_directory('stereo_image_proc')
 
+    stereo_proc = GroupAction(
+        actions=[
+            PushRosNamespace('oakd'), # Tout se passera dans /oakd/...
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(pkg_stereo_image_proc, 'launch', 'stereo_image_proc.launch.py')
+                ),
+                launch_arguments={
+                    'approximate_sync': 'True', # Indispensable pour la simu
+                    'use_sim_time': 'True',
+                    'left_namespace': 'left', 
+                    'right_namespace': 'right',
+                }.items()
+            )
+        ]
+    )
     
     rviz_cmd = Node(
         package='rviz2',
@@ -102,5 +121,6 @@ def generate_launch_description():
         navigation_cmd,
         explore_cmd,
         rviz_cmd,
-        supervisor
+        supervisor,
+        stereo_proc
     ])
