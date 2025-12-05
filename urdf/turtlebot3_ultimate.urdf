@@ -278,7 +278,7 @@
   <joint name="joint_oak_d_pro_camera" type="fixed">
     <parent link="base_link"/>
     <child link="oak_d_pro_camera"/>
-    <origin xyz="0.065 0.0 0.11" rpy="1.57 0.0 1.57"/> 
+    <origin xyz="0.09 0.0 0.145" rpy="1.57 0.0 1.57"/> 
   </joint>
   
   <link name="oak_d_pro_color_optical_frame"/>   
@@ -395,26 +395,60 @@
   </gazebo>
 
   <gazebo reference="oak_d_pro_color_optical_frame">
-    <sensor name='depth_camera' type='depth_camera'>
-		<pose>0 0 0 0 0 0</pose>
-		<update_rate>30</update_rate>
-		<always_on>1</always_on>
-		<visualize>true</visualize>
-		<topic>depth_camera/image</topic>
-		<gz_frame_id>camera_link</gz_frame_id>
-		<camera>
-			<horizontal_fov>1.047</horizontal_fov>
-			<image>
-				<width>640</width>
-				<height>480</height>
-				<format>R_FLOAT32</format>
-			</image>
-			<clip>
-				<near>0.1</near>
-				<far>100.0</far>
-			</clip>
-		</camera>
-	</sensor> 
+    <sensor name="rgb_camera" type="camera">
+      <pose>0 0 0 -1.57 0 -1.57</pose>
+      
+      <always_on>true</always_on>
+      <update_rate>30</update_rate>
+      <visualize>true</visualize>
+      <topic>oakd/rgb/image_raw</topic>
+      <camera>
+        <horizontal_fov>1.047</horizontal_fov>
+        <image>
+          <width>640</width> <height>480</height> <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.1</near> <far>100</far>
+        </clip>
+      </camera>
+      <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+        <ros>
+          <remapping>image_raw:=oakd/rgb/image_raw</remapping>
+          <remapping>camera_info:=oakd/rgb/camera_info</remapping>
+        </ros>
+        <frame_name>oak_d_pro_color_optical_frame</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="oak_d_pro_depth_optical_frame">
+    <sensor name="depth_camera" type="depth">
+      <pose>0 0 0 -1.57 0 -1.57</pose>
+
+      <always_on>true</always_on>
+      <update_rate>30</update_rate>
+      <visualize>true</visualize>
+      <topic>oakd/depth/image_raw</topic>
+      <camera>
+        <horizontal_fov>1.047</horizontal_fov>
+        <image>
+          <width>640</width> <height>480</height> <format>R_FLOAT32</format>
+        </image>
+        <clip>
+          <near>0.2</near> <far>10.0</far>
+        </clip>
+      </camera>
+      <plugin name="depth_camera_controller" filename="libgazebo_ros_camera.so">
+        <ros>
+          <remapping>image_raw:=oakd/depth/image_raw</remapping>
+          <remapping>camera_info:=oakd/depth/camera_info</remapping>
+          <remapping>depth/image_raw:=oakd/depth/image_raw</remapping>
+        </ros>
+        <frame_name>oak_d_pro_depth_optical_frame</frame_name>
+        <min_depth>0.2</min_depth>
+        <max_depth>10.0</max_depth>
+      </plugin>
+    </sensor>
   </gazebo>
 
   <gazebo reference="imu_link">
