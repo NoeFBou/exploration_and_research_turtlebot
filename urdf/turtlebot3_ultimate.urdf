@@ -278,21 +278,21 @@
   <joint name="joint_oak_d_pro_camera" type="fixed">
     <parent link="base_link"/>
     <child link="oak_d_pro_camera"/>
-    <origin xyz="0.09 0.0 0.145" rpy="1.57 0.0 1.57"/> 
+    <origin xyz="0.09 0.0 0.145" rpy="0 0 0"/>
   </joint>
-  
-  <link name="oak_d_pro_color_optical_frame"/>   
+
+  <link name="oak_d_pro_color_optical_frame"/>
   <joint name="joint_oak_d_pro_color_optical_frame" type="fixed">
     <parent link="oak_d_pro_camera"/>
     <child link="oak_d_pro_color_optical_frame"/>
-    <origin xyz="0.0 0.0 0.0" rpy="-1.5708 0.0 -1.5708"/> 
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
-  
-  <link name="oak_d_pro_depth_optical_frame"/>   
+
+  <link name="oak_d_pro_depth_optical_frame"/>
   <joint name="oak_d_pro_depth_optical_frame" type="fixed">
     <parent link="oak_d_pro_camera"/>
     <child link="oak_d_pro_depth_optical_frame"/>
-    <origin xyz="0.0 0.0 0.0" rpy="-1.5708 0.0 -1.5708"/> 
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 <link name="counterweight_link">
     <visual>
@@ -312,7 +312,7 @@
     <child link="counterweight_link"/>
     <origin xyz="-0.15 0 0.05" rpy="0 0 0"/>
   </joint>
-  
+
   <gazebo>
     <plugin name="turtlebot3_diff_drive" filename="libgazebo_ros_diff_drive.so">
       <ros></ros>
@@ -396,8 +396,8 @@
 
   <gazebo reference="oak_d_pro_color_optical_frame">
     <sensor name="rgb_camera" type="camera">
-      <pose>0 0 0 -1.57 0 -1.57</pose>
-      
+      <pose>0 0 0 0 0 0</pose>
+
       <always_on>true</always_on>
       <update_rate>30</update_rate>
       <visualize>true</visualize>
@@ -423,7 +423,7 @@
 
   <gazebo reference="oak_d_pro_depth_optical_frame">
     <sensor name="depth_camera" type="depth">
-      <pose>0 0 0 -1.57 0 -1.57</pose>
+      <pose>0 0 0 0 0 0</pose>
 
       <always_on>true</always_on>
       <update_rate>30</update_rate>
