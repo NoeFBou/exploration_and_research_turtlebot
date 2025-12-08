@@ -30,6 +30,7 @@ setup(
             'supervisor = tb3_autonomy.mission_supervisor:main',
             'supervisor_node = tb3_autonomy.supervisor_node:main',
             'camera_ai = tb3_autonomy.camera_processor:main',
+            'object_detector = tb3_autonomy.object_detector:main',
         ],
     },
 )

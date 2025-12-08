@@ -7,29 +7,47 @@ from rclpy.action import ActionClient
 from nav2_msgs.action import Spin
 from action_msgs.msg import GoalStatus
 from std_msgs.msg import Bool  # <--- NOUVEL IMPORT
-
+from geometry_msgs.msg import PoseStamped
 
 class Supervisor(Node):
     def __init__(self):
         super().__init__('supervisor')
 
-        self.declare_parameter('scan_interval', 80.0)
+        self.declare_parameter('scan_interval', 40.0)
         self.interval = self.get_parameter('scan_interval').value
 
 
         self._spin_client = ActionClient(self, Spin, 'spin')
 
         self.resume_pub = self.create_publisher(Bool, 'explore/resume', 10)
+        self.create_subscription(PoseStamped, '/target_object_pose', self.object_detected_callback, 10)
 
+        self.is_scanning = False
+        self.object_found = False
         self.timer = self.create_timer(self.interval, self.timer_callback)
         self.is_scanning = False
 
+    def object_detected_callback(self, msg):
+
+        if self.object_found:
+            return
+        X = msg.pose.position.x
+        Z = msg.pose.position.z
+
+        if Z < 2.5 and Z > 0.1:
+            self.get_logger().warning(f"CIBLE DÉTECTEE À {Z:.2f}m")
+            self.get_logger().warning("ARReT DE L EXPLORATION ")
+
+            self.toggle_exploration(False)
+
+            self.object_found = True
+            #code du gripper ci
+
     def timer_callback(self):
-        if self.is_scanning:
+        if self.is_scanning or self.object_found:
             return
 
         self.toggle_exploration(False)
-
         self.send_spin_goal()
 
     def toggle_exploration(self, state: bool):
