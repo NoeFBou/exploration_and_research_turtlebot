@@ -30,7 +30,8 @@ class ObjectDetector(Node):
         self.create_subscription(CameraInfo, '/rgb_camera/camera_info', self.info_callback, 10)
 
         # On s'abonne à la profondeur
-        self.create_subscription(Image, '/depth_camera/image_raw', self.depth_callback, 10)
+        #/depth_camera/depth/image_raw
+        self.create_subscription(Image, '/depth_camera/depth/image_raw', self.depth_callback, 10)
 
         # On s'abonne à l'image couleur (C'est elle qui déclenche le calcul)
         self.create_subscription(Image, '/rgb_camera/image_raw', self.image_callback, 10)
@@ -74,6 +75,7 @@ class ObjectDetector(Node):
             contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
             if contours:
+                # On prend le plus gros contour
                 largest_contour = max(contours, key=cv2.contourArea)
 
                 if cv2.contourArea(largest_contour) > 500:
@@ -84,17 +86,24 @@ class ObjectDetector(Node):
 
                         # 5. Récupérer la distance Z (Correction "Bulletproof")
                         raw_depth = self.last_depth_image[cy, cx]
-
-                        # Force brute : on écrase tout pour avoir un float simple
                         depth_value = float(np.array(raw_depth).flatten()[0])
 
-                        if depth_value > 0.1:
-                            self.publish_detection(cx, cy, depth_value, msg.header)
+                        # --- FILTRE DE SÉCURITÉ ---
+                        # Si la valeur est Infini (inf) ou Pas un Nombre (nan) -> On arrête
+                        if np.isinf(depth_value) or np.isnan(depth_value):
+                            return  # <--- REMPLACÉ 'continue' par 'return'
 
-                            # Debug visuel
-                            cv2.circle(cv_image, (cx, cy), 10, (0, 255, 0), -1)
-                            cv2.putText(cv_image, f"Z: {depth_value:.2f}m", (cx + 10, cy),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                        # Si la distance est absurde (> 5m ou < 0.2m) -> On arrête
+                        if depth_value > 3.0 or depth_value < 0.2:
+                            return  # <--- REMPLACÉ 'continue' par 'return'
+
+                        # Si on arrive ici, c'est bon !
+                        self.publish_detection(cx, cy, depth_value, msg.header)
+
+                        # Debug visuel
+                        cv2.circle(cv_image, (cx, cy), 10, (0, 255, 0), -1)
+                        cv2.putText(cv_image, f"Z: {depth_value:.2f}m", (cx + 10, cy),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
             # Affichage
             cv2.imshow("IA Vision (Simulation)", cv_image)
@@ -125,7 +134,7 @@ class ObjectDetector(Node):
         pose_msg.pose.orientation.w = 1.0
 
         self.pub_target.publish(pose_msg)
-        # self.get_logger().info(f"Objet détecté à X={X:.2f}, Y={Y:.2f}, Z={Z:.2f}")
+        self.get_logger().info(f"Objet détecté à X={X:.2f}, Y={Y:.2f}, Z={Z:.2f}")
 
 
 def main(args=None):
@@ -139,7 +148,6 @@ def main(args=None):
         node.destroy_node()
         rclpy.shutdown()
         cv2.destroyAllWindows()
-
 
 if __name__ == '__main__':
     main()

@@ -143,7 +143,8 @@ def generate_launch_description():
         package='tb3_autonomy',
         executable='supervisor_node',
         name='supervisor_node',
-        output='screen'
+        output='screen',
+    parameters = [{'use_sim_time': True}]
     )
 
     return LaunchDescription([

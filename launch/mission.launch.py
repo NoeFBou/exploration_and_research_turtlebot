@@ -14,8 +14,9 @@ def generate_launch_description():
     pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
     pkg_project = get_package_share_directory('tb3_autonomy')
     
-    nav2_params_path = os.path.join(pkg_nav2_bringup, 'params', 'nav2_params.yaml')
-
+    pkg_tb3_autonomy = get_package_share_directory('tb3_autonomy')
+    #nav2_params = os.path.join(pkg_nav2_bringup, 'params', 'nav2_params.yaml')
+    nav2_params = os.path.join(pkg_tb3_autonomy, 'params', 'my_nav2_params.yaml')
     env_gl = SetEnvironmentVariable(name='LIBGL_ALWAYS_SOFTWARE', value='1')
     env_lidar = SetEnvironmentVariable(name='LDS_MODEL', value='LDS-01')
 
