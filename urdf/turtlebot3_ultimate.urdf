@@ -252,6 +252,7 @@
       <origin rpy="0 0 0" xyz="0.05 -0.016 0.018"/>
       <parent link="tilt_gripper"/>
       <child link="right_gripper"/>
+      <mimic joint="gripper_left_joint" multiplier="-1" offset="0"/>
   </joint>
 
   <link name="oak_d_pro_camera">
