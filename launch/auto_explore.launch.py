@@ -58,7 +58,7 @@ def generate_launch_description():
         output='screen'
     )
 
-    world_path = os.path.join(pkg_tb3_gazebo, 'worlds', 'turtlebot3_world.world')
+    world_path = os.path.join(pkg_tb3_autonomy, 'worlds', 'my_room.sdf')
 
     gazebo_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
