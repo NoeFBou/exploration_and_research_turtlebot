@@ -8,11 +8,12 @@ from nav2_msgs.action import Spin, NavigateToPose
 from action_msgs.msg import GoalStatus
 from rclpy.duration import Duration
 from std_msgs.msg import Bool
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 import tf2_ros
-import tf2_geometry_msgs # Important pour que le buffer sache transformer des Poses
+import tf2_geometry_msgs
 from tf2_ros import LookupException, ConnectivityException, ExtrapolationException
 import time
+import math
 
 class Supervisor(Node):
     def __init__(self):
@@ -21,200 +22,197 @@ class Supervisor(Node):
         self.declare_parameter('scan_interval', 40.0)
         self.interval = self.get_parameter('scan_interval').value
 
+        # TF Buffer
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
-
+        # Clients Nav2
         self._spin_client = ActionClient(self, Spin, 'spin')
         self._nav_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
-
+        
+        # Publishers / Subscribers
         self.resume_pub = self.create_publisher(Bool, 'explore/resume', 10)
+        # NOUVEAU : On a besoin de piloter les roues directement pour la fin
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        
         self.create_subscription(PoseStamped, '/target_object_pose', self.object_detected_callback, 10)
 
+        # Timer Principal
         self.timer = self.create_timer(self.interval, self.timer_callback)
+        # Timer de Controle (Pour l'approche finale fluide)
+        self.control_timer = self.create_timer(0.1, self.control_loop)
 
+        # États
         self.object_found = False
         self.is_scanning = False
-        self.approach_in_progress = False
+        self.nav_approach_done = False # Est-ce qu'on a fini l'approche Nav2 ?
+        self.final_approach_active = False # Est-ce qu'on est en pilotage manuel ?
+        
         self._spin_goal_handle = None
+        self.last_object_msg = None # Pour stocker la dernière position vue
+
+        self.get_logger().info("Superviseur Hybride (Nav2 + Visual Servoing) Prêt.")
 
     def object_detected_callback(self, msg):
-       # self.get_logger().info('Object detected')
-        if self.object_found:
-            return
-        X = msg.pose.position.x
-        Z = msg.pose.position.z
+        # On met à jour la dernière position connue en permanence
+        self.last_object_msg = msg
         distance_objet = msg.pose.position.z
-        #self.get_logger().info('Object detected')
-        #self.get_logger().info('X: {}, Z: {}'.format(X, Z))
-        #self.get_logger().info('distance_objet: {}'.format(distance_objet))
 
-        if distance_objet < 2.5 and distance_objet > 0.2:
-            self.get_logger().warning(f"CIBLE DETECTEE À {Z:.2f}m")
-            self.get_logger().warning("ARRET DE L EXPLORATION ")
-
-            self.object_found = True
-
-            if self.timer:
-                self.timer.cancel()
-            self.toggle_exploration(False)
-            if self.is_scanning and self._spin_goal_handle is not None:
-                self.get_logger().warning("Annulation du Spin en cours...")
-                self._spin_goal_handle.cancel_goal_async()
-                time.sleep(1.0)
-            self.initiate_approach(msg, distance_objet)
-
-    def initiate_approach(self, object_pose_msg, current_distance):
-        self.approach_in_progress = True
-        self.get_logger().info("Calcul de la trajectoire d'approche...")
-
-        # Distance d'arrêt avant l'objet (ex: 35 cm)
-        stop_distance = 0.15
-        target_z = current_distance - stop_distance
-
-        if target_z < 0:
-            self.get_logger().warning("Déjà trop proche ! Je m'arrête là.")
+        # Si on est déjà en approche finale, on laisse le control_loop gérer
+        if self.final_approach_active:
             return
 
-        # Création du point cible dans le repère CAMÉRA
-        approach_pose_cam = PoseStamped()
-        approach_pose_cam.header = object_pose_msg.header  # Important: garde le frame_id (ex: color_optical_frame)
-        approach_pose_cam.header.stamp = self.get_clock().now().to_msg()  # Rafraîchir le temps pour TF
+        # Si on a déjà fini Nav2, on ne relance pas Nav2
+        if self.nav_approach_done:
+            # On active juste le pilotage fin si ce n'est pas fait
+            if not self.final_approach_active:
+                self.get_logger().info("Nav2 fini. Passage en Pilotage Visuel (Approche Fine).")
+                self.final_approach_active = True
+            return
 
-        approach_pose_cam.pose.position.x = object_pose_msg.pose.position.x
-        approach_pose_cam.pose.position.y = 0.0  # On ignore la hauteur
-        approach_pose_cam.pose.position.z = target_z  # On vise devant l'objet
-        approach_pose_cam.pose.orientation.w = 1.0
+        # Si on n'a pas encore trouvé l'objet officiellement
+        if not self.object_found:
+            # Filtre : Entre 2.5m et 0.6m (On laisse l'approche fine gérer en dessous de 0.6)
+            if distance_objet < 2.5 and distance_objet > 0.6:
+                self.get_logger().warning(f"CIBLE DETECTEE À {distance_objet:.2f}m -> Lancement Nav2")
+                self.start_nav2_sequence(msg, distance_objet)
 
+    def start_nav2_sequence(self, msg, distance):
+        self.object_found = True
+        self.get_logger().warning("ARRET DE L'EXPLORATION")
+
+        if self.timer: self.timer.cancel()
+        self.toggle_exploration(False)
+        
+        if self.is_scanning and self._spin_goal_handle:
+            self._spin_goal_handle.cancel_goal_async()
+            time.sleep(1.0) # Petite pause pour stabiliser
+
+        # --- CALCUL POINT D'APPROCHE NAV2 (LOIN) ---
+        # On demande à Nav2 d'aller à 60cm de l'objet (Zone Sûre)
+        stop_distance = 0.60 
+        target_z = distance - stop_distance
+
+        approach_pose = PoseStamped()
+        approach_pose.header = msg.header
+        approach_pose.header.stamp = self.get_clock().now().to_msg()
+        approach_pose.pose.position.x = msg.pose.position.x
+        approach_pose.pose.position.y = 0.0
+        approach_pose.pose.position.z = target_z
+        approach_pose.pose.orientation.w = 1.0
 
         try:
-            pose_map = self.tf_buffer.transform(
-                approach_pose_cam,
-                'map',
-                timeout=Duration(seconds=1.0)
-            )
-
-            self.get_logger().info(
-                f"Point d'approche Carte : X={pose_map.pose.position.x:.2f}, Y={pose_map.pose.position.y:.2f}")
-            current_pose = self.get_current_pose()
-            self.get_logger().info(f"--- DEBUG APPROCHE ---")
-            self.get_logger().info(f"Robot Actuel : X={current_pose.position.x:.2f}, Y={current_pose.position.y:.2f}")
-            self.get_logger().info(f"But Calculé  : X={pose_map.pose.position.x:.2f}, Y={pose_map.pose.position.y:.2f}")
-            self.get_logger().info(f"Distance à parcourir : {self.calculate_distance(current_pose, pose_map.pose):.2f}m")
-
+            pose_map = self.tf_buffer.transform(approach_pose, 'map', timeout=Duration(seconds=1.0))
+            self.get_logger().info(f"Nav2 va à 60cm de la cible.")
             self.send_nav_goal(pose_map)
+        except Exception as e:
+            self.get_logger().error(f'Erreur TF: {e}')
+            self.object_found = False # Reset si échec calcul
 
-        except (LookupException, ConnectivityException, ExtrapolationException) as e:
-            self.get_logger().error(f'Erreur Transformation TF : {e}')
-            self.object_found = False  # On réessaiera au prochain messag
-
-
-
-    def timer_callback(self):
-        if self.is_scanning or self.object_found:
+    # --- BOUCLE DE CONTROLE (Approche Finale) ---
+    def control_loop(self):
+        # Cette boucle tourne 10 fois par seconde
+        if not self.final_approach_active:
             return
 
-        self.toggle_exploration(False)
-        self.send_spin_goal()
+        if self.last_object_msg is None:
+            # Sécurité: si on perd l'objet de vue, on s'arrête
+            self.cmd_vel_pub.publish(Twist())
+            return
 
-    def toggle_exploration(self, state: bool):
+        # Récupération des coordonnées (repère caméra)
+        # X = Droite/Gauche, Z = Devant
+        x_obj = self.last_object_msg.pose.position.x
+        z_obj = self.last_object_msg.pose.position.z
 
-        msg = Bool()
-        msg.data = state
-        self.resume_pub.publish(msg)
-        action = "REPRISE" if state else "PAUSE"
-        self.get_logger().info(f'Envoi de la commande : {action}')
+        # --- LOGIQUE D'ASSERVISSEMENT ---
+        twist = Twist()
 
+        # 1. Condition d'arrêt (12cm de l'objet)
+        if z_obj <= 0.12:
+            self.get_logger().info("STOP ! Cible atteinte (12cm). GRIPPER !")
+            self.cmd_vel_pub.publish(Twist()) # Arrêt total
+            self.final_approach_active = False # Fin de la mission
+            # ICI : APPELER LE GRIPPER
+            return
+
+        # 2. Avancer (Vitesse proportionnelle à la distance, mais bornée)
+        # On ralentit quand on approche
+        speed_x = 0.15 # Vitesse constante douce
+        if z_obj < 0.3: speed_x = 0.05 # Très lent à la fin
+
+        twist.linear.x = speed_x
+
+        # 3. Tourner (Correction d'angle)
+        # Si x_obj > 0, l'objet est à gauche (dans le repère optique standard -Y) 
+        # Attention aux axes: Camera Optical X=Droite. 
+        # Pour centrer l'objet (X=0), on tourne.
+        # Gain P (Proportionnel) : 1.5
+        twist.angular.z = -1.5 * x_obj 
+
+        self.cmd_vel_pub.publish(twist)
+        # Reset du message pour éviter d'utiliser des vieilles données si la caméra lag
+        self.last_object_msg = None 
+
+    # --- ACTIONS NAV2 ---
     def send_nav_goal(self, pose):
-        if not self._nav_client.wait_for_server(timeout_sec=2.0):
-            self.get_logger().error("Nav2 non disponible !")
-            return
-
+        if not self._nav_client.wait_for_server(timeout_sec=2.0): return
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose = pose
-
-        self.get_logger().info("Envoi de l'ordre d'approche à Nav2...")
         self._send_nav_future = self._nav_client.send_goal_async(goal_msg)
         self._send_nav_future.add_done_callback(self.nav_response_callback)
 
     def nav_response_callback(self, future):
         goal_handle = future.result()
         if not goal_handle.accepted:
-            self.get_logger().error('Nav2 a refusé le but (Zone interdite ou trop proche ?)')
+            self.get_logger().error('Nav2 refusé -> Passage direct en manuel ?')
+            # Si Nav2 refuse, on tente quand même l'approche manuelle si on voit l'objet
+            self.nav_approach_done = True 
             return
-
-        self.get_logger().info('Approche validée ! Le robot se déplace.')
+        
         self._get_nav_result_future = goal_handle.get_result_async()
         self._get_nav_result_future.add_done_callback(self.nav_result_callback)
 
     def nav_result_callback(self, future):
-        status = future.result().status
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            self.get_logger().info('Le robot est arrivé devant l\'objet ! (LANCEMENT DU GRIPPER)')
-            # ICI : Appeler ton service ou ton code pour fermer la pince
-        else:
-            self.get_logger().warning(f'Echec de l\'approche (Status: {status})')
-    def send_spin_goal(self):
-        if not self._spin_client.wait_for_server(timeout_sec=1.0):
-            self.get_logger().warning('Serveur Spin non disponible. Annulation.')
-            self.toggle_exploration(True)
-            return
+        # Quand Nav2 a fini (Réussite ou Echec peu importe, on est censé être plus près)
+        self.get_logger().info('Fin Nav2. Activation Approche Finale.')
+        self.nav_approach_done = True
+        # Le control_loop prendra le relais automatiquement
 
+    # --- RESTE DU CODE (Spin, Timer) ---
+    def timer_callback(self):
+        if self.is_scanning or self.object_found: return
+        self.toggle_exploration(False)
+        self.send_spin_goal()
+
+    def toggle_exploration(self, state: bool):
+        msg = Bool()
+        msg.data = state
+        self.resume_pub.publish(msg)
+
+    def send_spin_goal(self):
+        if not self._spin_client.wait_for_server(timeout_sec=1.0): return
         self.is_scanning = True
         goal_msg = Spin.Goal()
-        goal_msg.target_yaw = 6.28  # 360
-
+        goal_msg.target_yaw = 6.28
         self._send_goal_future = self._spin_client.send_goal_async(goal_msg)
         self._send_goal_future.add_done_callback(self.goal_response_callback)
 
     def goal_response_callback(self, future):
         goal_handle = future.result()
-
         if not goal_handle.accepted:
             self.is_scanning = False
             self.toggle_exploration(True)
             return
-
-        self.get_logger().info('Rotation acceptée. En cours...')
         self._spin_goal_handle = goal_handle
         self._get_result_future = goal_handle.get_result_async()
-
         self._get_result_future.add_done_callback(self.get_result_callback)
 
     def get_result_callback(self, future):
-        status = future.result().status
-
-        if self.object_found:
-            self.get_logger().info('Fin du Spin (Interrompu ou fini), mais objet trouvé. Focus sur approche.')
-            self.is_scanning = False
-            self._spin_goal_handle = None
-            return
-
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            self.get_logger().info('Rotation terminée avec succès.')
-        elif status == GoalStatus.STATUS_CANCELED:
-            self.get_logger().info('Rotation annulée.')
-        else:
-            self.get_logger().info(f'Rotation finie (Status: {status}).')
-
+        if self.object_found: return
         self.toggle_exploration(True)
         self.is_scanning = False
         self._spin_goal_handle = None
-
-    def get_current_pose(self):
-        try:
-            trans = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
-            pose = tf2_geometry_msgs.Pose()
-            pose.position.x = trans.transform.translation.x
-            pose.position.y = trans.transform.translation.y
-            return pose
-        except:
-            return tf2_geometry_msgs.Pose()
-
-    def calculate_distance(self, pose1, pose2):
-        import math
-        return math.sqrt((pose1.position.x - pose2.position.x) ** 2 + (pose1.position.y - pose2.position.y) ** 2)
-
 
 def main(args=None):
     rclpy.init(args=args)
@@ -226,7 +224,6 @@ def main(args=None):
     finally:
         node.destroy_node()
         rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()
