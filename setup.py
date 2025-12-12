@@ -31,6 +31,7 @@ setup(
             'supervisor_node = tb3_autonomy.supervisor_node:main',
             'camera_ai = tb3_autonomy.camera_processor:main',
             'object_detector = tb3_autonomy.object_detector:main',
+            'catch_node = tb3_autonomy.catch_node:main',
         ],
     },
 )

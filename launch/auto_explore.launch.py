@@ -146,7 +146,11 @@ def generate_launch_description():
         output='screen',
     parameters = [{'use_sim_time': True}]
     )
-
+    catch_cmd = Node(
+        package='tb3_autonomy',
+        executable='catch_node',
+        name='catch_node'
+    )
     return LaunchDescription([
         set_gazebo_model_path,
         env_lidar,
@@ -159,5 +163,6 @@ def generate_launch_description():
         explore_cmd,
         rviz_cmd,
         supervisor,
-        stereo_proc
+        stereo_proc,
+        catch_cmd
     ])
