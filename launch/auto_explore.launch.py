@@ -27,7 +27,7 @@ def generate_launch_description():
     )
 
     env_lidar = SetEnvironmentVariable(name='LDS_MODEL', value='LDS-01')
-    env_gl = SetEnvironmentVariable(name='LIBGL_ALWAYS_SOFTWARE', value='0')
+    env_gl = SetEnvironmentVariable(name='LIBGL_ALWAYS_SOFTWARE', value='1')
 
     urdf_path = os.path.join(pkg_tb3_autonomy, 'urdf', urdf_file_name)
 
