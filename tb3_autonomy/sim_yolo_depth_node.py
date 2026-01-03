@@ -41,7 +41,8 @@ class SimYoloDepthNode(Node):
 
         # Params
         self.declare_parameter("weights", "best.pt")  # ton yolo11n finetune
-        self.declare_parameter("device", 0)  # 0 = GPU, "cpu" sinon
+        # self.declare_parameter("device", 0)  # 0 = GPU, "cpu" sinon
+        self.declare_parameter("device", "cpu")
         self.declare_parameter("conf", 0.5)
         self.declare_parameter(
             "max_rate_hz", 15.0
@@ -49,7 +50,8 @@ class SimYoloDepthNode(Node):
         self.declare_parameter("debug_view", True)
 
         self.weights = self.get_parameter("weights").value
-        self.device = self.get_parameter("device").value
+        # self.device = self.get_parameter("device").value
+        self.device = str(self.get_parameter("device").value)
         self.conf = float(self.get_parameter("conf").value)
         self.max_rate_hz = float(self.get_parameter("max_rate_hz").value)
         self.debug_view = bool(self.get_parameter("debug_view").value)
@@ -64,10 +66,13 @@ class SimYoloDepthNode(Node):
         self.pub = self.create_publisher(PoseStamped, "/target_object_pose", 10)
 
         # Subscriptions
-        self.create_subscription(CameraInfo, "/oakd/rgb/camera_info", self.info_cb, 10)
+        # self.create_subscription(CameraInfo, "/oakd/rgb/camera_info", self.info_cb, 10)
+        self.create_subscription(CameraInfo, "/rgb_camera/camera_info", self.info_cb, 10)
 
-        rgb_sub = Subscriber(self, Image, "/oakd/rgb/image_raw")
-        depth_sub = Subscriber(self, Image, "/oakd/depth/image_raw")
+        # rgb_sub = Subscriber(self, Image, "/oakd/rgb/image_raw")
+        rgb_sub = Subscriber(self, Image, "/rgb_camera/image_raw")
+        # depth_sub = Subscriber(self, Image, "/oakd/depth/image_raw")
+        depth_sub = Subscriber(self, Image, "/depth_camera/depth/image_raw")
 
         # Sync approx RGB + depth
         self.sync = ApproximateTimeSynchronizer(
