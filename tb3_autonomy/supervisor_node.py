@@ -53,6 +53,9 @@ class Supervisor(Node):
         self.initial_pose = None
         self.start_time = time.time()
         self.get_logger().info("Superviseur Hybride (Nav2 + Visual Servoing) Prêt.")
+        self.known_objects = []
+        self.detection_threshold = 1.0
+
 
     def save_initial_pose(self):
         if self.initial_pose is not None:
@@ -74,8 +77,28 @@ class Supervisor(Node):
         except Exception:
             pass
 
+    def is_new_object(self, x, y):
+        for obj in self.known_objects:
+            dist = math.sqrt((x - obj['x']) ** 2 + (y - obj['y']) ** 2)
+            if dist < self.detection_threshold:
+                return False
+        return True
 
     def object_detected_callback(self, msg):
+        # --- 1. TRANSFORMATION TF (Monde Réel) ---
+        try:
+            target_pose_map = self.tf_buffer.transform(msg, 'map', timeout=rclpy.duration.Duration(seconds=1.0))
+            x_map = target_pose_map.pose.position.x
+            y_map = target_pose_map.pose.position.y
+        except Exception as e:
+            self.get_logger().warn(f"Pas de TF vers map : {e}")
+            return
+
+        # --- 2. MÉMOIRE (On stocke si c'est nouveau) ---
+        if self.is_new_object(x_map, y_map):
+            self.get_logger().info(f"NOUVEL OBJET DÉCOUVERT en (X={x_map:.2f}, Y={y_map:.2f})")
+            self.known_objects.append({'x': x_map, 'y': y_map, 'collected': False})
+
         self.save_initial_pose()
         self.last_object_msg = msg
         if msg.pose.position.x > 0:
@@ -84,6 +107,7 @@ class Supervisor(Node):
             self.last_known_direction = 1
 
         distance_objet = msg.pose.position.z
+
         if self.mission_complete: return
         if self.final_approach_active: return
 
@@ -94,7 +118,8 @@ class Supervisor(Node):
             return
 
         if not self.object_found:
-            if distance_objet < 2.5 and distance_objet > 0.5:
+            # Note : j'ai ajusté la distance max à 3.5m car Nav2 voit loin
+            if distance_objet < 3.5 and distance_objet > 0.5:
                 self.get_logger().warning(f"CIBLE DETECTEE À {distance_objet:.2f}m -> Nav2")
                 self.start_nav2_sequence(msg, distance_objet)
             elif distance_objet <= 0.5 and distance_objet > 0.1:
