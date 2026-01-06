@@ -14,6 +14,7 @@ import tf2_geometry_msgs
 from tf2_ros import LookupException, ConnectivityException, ExtrapolationException
 import time
 import math
+from visualization_msgs.msg import Marker, MarkerArray
 
 class Supervisor(Node):
     def __init__(self):
@@ -35,6 +36,7 @@ class Supervisor(Node):
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.catch_pub = self.create_publisher(Bool, '/catch', 10)
         self.create_subscription(PoseStamped, '/target_object_pose', self.object_detected_callback, 10)
+        self.marker_pub = self.create_publisher(MarkerArray, '/supervisor/known_objects', 10)
 
         self.timer = self.create_timer(self.interval, self.timer_callback)
         self.control_timer = self.create_timer(0.1, self.control_loop)
@@ -84,6 +86,57 @@ class Supervisor(Node):
                 return False
         return True
 
+    def publish_markers(self):
+        marker_array = MarkerArray()
+
+        for i, obj in enumerate(self.known_objects):
+            marker = Marker()
+            marker.header.frame_id = "map"  # Important : les objets sont stockés en coordonnées MAP
+            marker.header.stamp = self.get_clock().now().to_msg()
+            marker.ns = "known_objects"
+            marker.id = i  # Chaque objet a un ID unique
+            marker.type = Marker.SPHERE
+            marker.action = Marker.ADD
+
+            marker.pose.position.x = obj['x']
+            marker.pose.position.y = obj['y']
+            marker.pose.position.z = 0.15  # Un peu au-dessus du sol
+            marker.pose.orientation.w = 1.0
+
+            # Taille (20cm)
+            marker.scale.x = 0.2
+            marker.scale.y = 0.2
+            marker.scale.z = 0.2
+
+            marker.color.r = 0.0
+            marker.color.g = 1.0
+            marker.color.b = 1.0
+            marker.color.a = 1.0
+
+            marker.lifetime.sec = 0
+
+            marker_array.markers.append(marker)
+
+            text_marker = Marker()
+            text_marker.header = marker.header
+            text_marker.ns = "known_objects_text"
+            text_marker.id = i + 1000  # ID différent pour pas écraser la sphère
+            text_marker.type = Marker.TEXT_VIEW_FACING
+            text_marker.action = Marker.ADD
+            text_marker.pose.position.x = obj['x']
+            text_marker.pose.position.y = obj['y']
+            text_marker.pose.position.z = 0.4  # Au-dessus de la sphère
+            text_marker.scale.z = 0.15  #
+            text_marker.color.r = 1.0
+            text_marker.color.g = 1.0
+            text_marker.color.b = 1.0
+            text_marker.color.a = 1.0
+            text_marker.text = f"Obj_{i}"
+
+            marker_array.markers.append(text_marker)
+
+        self.marker_pub.publish(marker_array)
+
     def object_detected_callback(self, msg):
         # --- 1. TRANSFORMATION TF (Monde Réel) ---
         try:
@@ -98,7 +151,7 @@ class Supervisor(Node):
         if self.is_new_object(x_map, y_map):
             self.get_logger().info(f"NOUVEL OBJET DÉCOUVERT en (X={x_map:.2f}, Y={y_map:.2f})")
             self.known_objects.append({'x': x_map, 'y': y_map, 'collected': False})
-
+            self.publish_markers()
         self.save_initial_pose()
         self.last_object_msg = msg
         if msg.pose.position.x > 0:

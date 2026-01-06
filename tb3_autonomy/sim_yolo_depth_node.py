@@ -32,7 +32,7 @@ from message_filters import ApproximateTimeSynchronizer, Subscriber
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
 from ultralytics import YOLO
-
+from visualization_msgs.msg import Marker
 
 class SimYoloDepthNode(Node):
     def __init__(self):
@@ -70,9 +70,9 @@ class SimYoloDepthNode(Node):
         self.create_subscription(CameraInfo, "/rgb_camera/camera_info", self.info_cb, 10)
 
         # rgb_sub = Subscriber(self, Image, "/oakd/rgb/image_raw")
-        rgb_sub = Subscriber(self, Image, "/rgb_camera/image_raw")
+        rgb_sub = Subscriber(self, Image, "/rgb_camera/image")
         # depth_sub = Subscriber(self, Image, "/oakd/depth/image_raw")
-        depth_sub = Subscriber(self, Image, "/depth_camera/depth/image_raw")
+        depth_sub = Subscriber(self, Image, "/depth_camera/depth/image")
 
         # Sync approx RGB + depth
         self.sync = ApproximateTimeSynchronizer(
@@ -84,6 +84,8 @@ class SimYoloDepthNode(Node):
         self.get_logger().info(
             "SimYoloDepthNode ready (Gazebo RGB+Depth -> YOLO -> /target_object_pose)."
         )
+        self.pub = self.create_publisher(PoseStamped, "/target_object_pose", 10)
+        self.marker_pub = self.create_publisher(Marker, "/detected_object_marker", 10)
 
     def info_cb(self, msg: CameraInfo):
         if self.camera_info is None:
@@ -166,12 +168,37 @@ class SimYoloDepthNode(Node):
         Z = z
 
         out = PoseStamped()
-        out.header = rgb_msg.header  # frame_id OK (optical frame Gazebo)
+        out.header.stamp = rgb_msg.header.stamp
+        out.header.frame_id = "oak_d_pro_depth_optical_frame"
+
         out.pose.position.x = float(X)
         out.pose.position.y = float(Y)
         out.pose.position.z = float(Z)
         out.pose.orientation.w = 1.0
         self.pub.publish(out)
+
+        marker = Marker()
+        marker.header = out.header
+        marker.ns = "test"
+        marker.id = 0
+        marker.type = Marker.CUBE
+        marker.action = Marker.ADD
+
+        marker.scale.x = 0.1
+        marker.scale.y = 0.1
+        marker.scale.z = 0.1
+
+        marker.color.r = 1.0
+        marker.color.g = 0.0
+        marker.color.b = 0.0
+        marker.color.a = 0.8
+
+        marker.pose = out.pose
+
+        marker.lifetime.sec = 0
+        marker.lifetime.nanosec = 500000000
+
+        self.marker_pub.publish(marker)
 
         if self.debug_view:
             cv2.rectangle(rgb, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)

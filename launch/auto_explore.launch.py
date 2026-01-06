@@ -8,7 +8,7 @@ from launch_ros.actions import Node, PushRosNamespace
 
 
 def generate_launch_description():
-    urdf_file_name = 'turtlebot3_ultimate.urdf'
+    urdf_file_name = 'turtlebot3_burger_gripper.urdf'
     use_sim_time = 'true'
 
     pkg_tb3_autonomy = get_package_share_directory('tb3_autonomy')
