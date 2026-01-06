@@ -15,8 +15,12 @@ setup(
         (os.path.join("share", package_name, "launch"), glob("launch/*.launch.py")),
         (os.path.join("share", package_name, "worlds"), glob("worlds/*.sdf")),
         (os.path.join("share", package_name, "urdf"), glob("urdf/*.urdf")),
-        (os.path.join("share", package_name, "meshes"), glob("meshes/*.stl")),
         (os.path.join("share", package_name, "params"), glob("params/*.yaml")),
+
+        (os.path.join("share", package_name, "meshes", "bases"), glob("meshes/bases/*.stl")),
+        (os.path.join("share", package_name, "meshes", "wheels"), glob("meshes/wheels/*.stl")),
+        (os.path.join("share", package_name, "meshes", "sensors"), glob("meshes/sensors/*.stl")),
+        (os.path.join("share", package_name, "meshes", "actuators", "gripper"), glob("meshes/actuators/gripper/*.stl")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
