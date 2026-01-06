@@ -4,7 +4,7 @@
 <!-- |    EDITING THIS FILE BY HAND IS NOT RECOMMENDED                                 | -->
 <!-- =================================================================================== -->
 <robot name="turtlebot3_burger">
-  <!-- <xacro:include filename="$(find turtlebot3_descriptions)/urdf/common_properties.urdf"/> -->
+  <!-- <xacro:include filename="$(find tb3_autonomy)/urdf/common_properties.urdf"/> -->
   <!-- Init colour -->
   <material name="black">
     <color rgba="0.0 0.0 0.0 1.0"/>
@@ -46,7 +46,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.032 0 0.0"/>
       <geometry>
-        <mesh filename="package://turtlebot3_descriptions/meshes/bases/burger_base.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://tb3_autonomy/meshes/bases/burger_base.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="light_black"/>
     </visual>
@@ -72,7 +72,7 @@
     <visual>
       <origin rpy="1.57 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://turtlebot3_descriptions/meshes/wheels/left_tire.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://tb3_autonomy/meshes/wheels/left_tire.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -98,7 +98,7 @@
     <visual>
       <origin rpy="1.57 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://turtlebot3_descriptions/meshes/wheels/right_tire.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://tb3_autonomy/meshes/wheels/right_tire.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -142,7 +142,7 @@
     <visual>
       <origin rpy="0 0 1.57" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://turtlebot3_descriptions/meshes/sensors/support_cameras_part_a.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://tb3_autonomy/meshes/sensors/support_cameras_part_a.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -163,7 +163,7 @@
     <visual>
       <origin rpy="0 0 -1.57" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://turtlebot3_descriptions/meshes/sensors/support_cameras_part_b.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://tb3_autonomy/meshes/sensors/support_cameras_part_b.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -190,7 +190,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <geometry>
-        <mesh filename="package://turtlebot3_descriptions/meshes/sensors/lds.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://tb3_autonomy/meshes/sensors/lds.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -211,7 +211,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <geometry>
-        <mesh filename="package://turtlebot3_descriptions/meshes/actuators/gripper/gripper_base.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://tb3_autonomy/meshes/actuators/gripper/gripper_base.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -237,7 +237,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <geometry>
-        <mesh filename="package://turtlebot3_descriptions/meshes/actuators/gripper/gripper_tilt.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://tb3_autonomy/meshes/actuators/gripper/gripper_tilt.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -265,7 +265,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <geometry>
-        <mesh filename="package://turtlebot3_descriptions/meshes/actuators/gripper/gripper_left.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://tb3_autonomy/meshes/actuators/gripper/gripper_left.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -293,7 +293,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <geometry>
-        <mesh filename="package://turtlebot3_descriptions/meshes/actuators/gripper/gripper_right.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://tb3_autonomy/meshes/actuators/gripper/gripper_right.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -321,7 +321,7 @@
     <visual name="meshes">
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
       <geometry>
-          <mesh filename="package://turtlebot3_descriptions/meshes/sensors/OAK-D-PRO.stl" scale="1.0 1.0 1.0"/>
+          <mesh filename="package://tb3_autonomy/meshes/sensors/OAK-D-PRO.stl" scale="1.0 1.0 1.0"/>
       </geometry>
       <material name="dark"/>
     </visual>
