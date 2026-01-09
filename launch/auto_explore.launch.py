@@ -139,13 +139,31 @@ def generate_launch_description():
         output='screen'
     )
 
+    # supervisor = Node(
+    #     package='tb3_autonomy',
+    #     executable='supervisor_node',
+    #     name='supervisor_node',
+    #     output='screen',
+    # parameters = [{'use_sim_time': True}]
+    # )
+
     supervisor = Node(
         package='tb3_autonomy',
-        executable='supervisor_node',
-        name='supervisor_node',
+        executable='bt_supervisor',
+        name='bt_supervisor',
         output='screen',
-    parameters = [{'use_sim_time': True}]
+        parameters=[{'use_sim_time': True}]
     )
+    # detector_cmd = Node(
+    #     package='tb3_autonomy',
+    #     executable='sim_yolo_depth',
+    #     name='sim_yolo_depth_node',
+    #     output='screen',
+    #     parameters=[{
+    #         'use_sim_time': True,
+    #         'debug_view': True
+    #     }]
+    # )
     catch_cmd = Node(
         package='tb3_autonomy',
         executable='catch_node',
@@ -162,6 +180,7 @@ def generate_launch_description():
         navigation_cmd,
         explore_cmd,
         rviz_cmd,
+        # detector_cmd,
         supervisor,
         stereo_proc,
         catch_cmd

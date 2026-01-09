@@ -426,7 +426,7 @@
     <sensor name="hls_lfcd_lds" type="gpu_lidar">
       <always_on>true</always_on>
       <visualize>true</visualize>
-      <update_rate>5</update_rate>
+      <update_rate>15</update_rate>
       <topic>scan</topic>
       <gz_frame_id>base_scan</gz_frame_id>
       <lidar>

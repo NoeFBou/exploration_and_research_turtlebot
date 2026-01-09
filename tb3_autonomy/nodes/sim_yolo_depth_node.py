@@ -33,6 +33,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
 from ultralytics import YOLO
 from visualization_msgs.msg import Marker
+from rclpy.qos import qos_profile_sensor_data
 
 class SimYoloDepthNode(Node):
     def __init__(self):
@@ -70,13 +71,14 @@ class SimYoloDepthNode(Node):
         self.create_subscription(CameraInfo, "/rgb_camera/camera_info", self.info_cb, 10)
 
         # rgb_sub = Subscriber(self, Image, "/oakd/rgb/image_raw")
-        rgb_sub = Subscriber(self, Image, "/rgb_camera/image")
+        #rgb_sub = Subscriber(self, Image, "/rgb_camera/image")
         # depth_sub = Subscriber(self, Image, "/oakd/depth/image_raw")
-        depth_sub = Subscriber(self, Image, "/depth_camera/depth/image")
-
+        #depth_sub = Subscriber(self, Image, "/depth_camera/depth/image")
+        rgb_sub = Subscriber(self, Image, "/rgb_camera/image_raw", qos_profile=qos_profile_sensor_data)
+        depth_sub = Subscriber(self, Image, "/depth_camera/depth/image_raw", qos_profile=qos_profile_sensor_data)
         # Sync approx RGB + depth
         self.sync = ApproximateTimeSynchronizer(
-            [rgb_sub, depth_sub], queue_size=10, slop=0.08
+            [rgb_sub, depth_sub], queue_size=10, slop=0.1
         )
         self.sync.registerCallback(self.synced_cb)
 
@@ -86,6 +88,9 @@ class SimYoloDepthNode(Node):
         )
         self.pub = self.create_publisher(PoseStamped, "/target_object_pose", 10)
         self.marker_pub = self.create_publisher(Marker, "/detected_object_marker", 10)
+        self.get_logger().info(
+            "aled"
+        )
 
     def info_cb(self, msg: CameraInfo):
         if self.camera_info is None:
