@@ -53,7 +53,8 @@ def generate_launch_description():
             '-entity', 'my_custom_waffle',
             '-x', '-2.0',
             '-y', '-0.5',
-            '-z', '0.15'
+            '-z', '0.15',
+            '-timeout', '120.0'
         ],
         output='screen'
     )
@@ -98,6 +99,7 @@ def generate_launch_description():
         executable='explore',
         name='explore_node',
         output='screen',
+        arguments=['--ros-args', '--log-level', 'warn'],
         parameters=[{
             'use_sim_time': True,
             'robot_base_frame': 'base_link',

@@ -175,16 +175,23 @@ class SimYoloDepthNode(Node):
 
         out = PoseStamped()
         out.header.stamp = rgb_msg.header.stamp
-        out.header.frame_id = "oak_d_pro_depth_optical_frame"
+        # out.header.frame_id = "oak_d_pro_depth_optical_frame"
+        #
+        # out.pose.position.x = float(X)
+        # out.pose.position.y = float(Y)
+        # out.pose.position.z = float(Z)
+        #out.pose.orientation.w = 1.0
+        out.header.frame_id = "base_link"
+        out.pose.position.x = float(Z)
+        out.pose.position.y = -float(X)
+        out.pose.position.z = 0.0
 
-        out.pose.position.x = float(X)
-        out.pose.position.y = float(Y)
-        out.pose.position.z = float(Z)
         out.pose.orientation.w = 1.0
         self.pub.publish(out)
 
         marker = Marker()
         marker.header = out.header
+        marker.header.frame_id = "base_link" #ici?
         marker.ns = "test"
         marker.id = 0
         marker.type = Marker.CUBE

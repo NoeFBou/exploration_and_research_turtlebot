@@ -242,30 +242,37 @@ class WaitForStartSignal(py_trees.behaviour.Behaviour):
 
 
 class ToggleExploration(py_trees.behaviour.Behaviour):
+    """
+    Active/Désactive explore_lite.
+    Envoie le message en continu (si appelé en boucle) pour gérer les retards au démarrage,
+    mais ne spamme pas les logs.
+    """
     def __init__(self, name="Toggle Explore", enable=True):
         super(ToggleExploration, self).__init__(name)
         self.enable = enable
         self.node = None
         self.pub = None
-        self.sent_once = False  # Pour éviter le spam
+        self.has_logged = False # Mémoire interne pour le log
 
     def setup(self, **kwargs):
         self.node = kwargs.get('node')
         self.pub = self.node.create_publisher(Bool, 'explore/resume', 10)
 
     def initialise(self):
-        self.sent_once = False
+        # On ne reset PAS has_logged ici si on veut que ça reste silencieux
+        # tant qu'on est dans la même phase.
+        pass
 
     def update(self):
-        # CORRECTION : On n'envoie le message qu'une seule fois par activation
-        if not self.sent_once:
-            msg = Bool()
-            msg.data = self.enable
-            self.pub.publish(msg)
-            self.sent_once = True
+        # 1. On publie TOUJOURS (Martèlement)
+        msg = Bool()
+        msg.data = self.enable
+        self.pub.publish(msg)
 
+        # 2. On loggue UNE SEULE FOIS
+        if not self.has_logged:
             state = "ON" if self.enable else "OFF"
-            # On loggue uniquement quand on envoie vraiment
-            self.node.get_logger().info(f"[Action] Exploration {state}")
+            self.node.get_logger().info(f"[Action] Exploration {state} (commande envoyée)")
+            self.has_logged = True
 
         return py_trees.common.Status.SUCCESS
