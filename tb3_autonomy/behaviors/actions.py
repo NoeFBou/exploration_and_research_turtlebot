@@ -3,7 +3,7 @@ import py_trees
 import math
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, PoseStamped
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Int32
 import tf2_ros
 from tf2_geometry_msgs import do_transform_pose
 
@@ -129,75 +129,143 @@ class CatchObject(py_trees.behaviour.Behaviour):
         return py_trees.common.Status.RUNNING
 
 
-class ToggleExploration(py_trees.behaviour.Behaviour):
+# class ToggleExploration(py_trees.behaviour.Behaviour):
+#     """
+#     Active/Désactive explore_lite.
+#     """
+#
+#     def __init__(self, name="Toggle Explore", enable=True):
+#         super(ToggleExploration, self).__init__(name)
+#         self.enable = enable
+#         self.node = None
+#         self.pub = None
+#
+#     def setup(self, **kwargs):
+#         self.node = kwargs.get('node')
+#         self.pub = self.node.create_publisher(Bool, 'explore/resume', 10)
+#
+#     def initialise(self):
+#         msg = Bool()
+#         msg.data = self.enable
+#         self.pub.publish(msg)
+#         state = "ON" if self.enable else "OFF"
+#         self.node.get_logger().info(f"[Action] Exploration {state}")
+#
+#     def update(self):
+#         # Une fois le message envoyé, l'action est considérée comme faite
+#         return py_trees.common.Status.SUCCESS
+
+
+class WaitForUserSelection(py_trees.behaviour.Behaviour):
     """
-    Active/Désactive explore_lite.
+    Attend qu'un ID soit reçu sur le topic '/mission/select_target'.
+    Non-bloquant pour l'arbre.
     """
 
+    def __init__(self, name="Attente Choix"):
+        super(WaitForUserSelection, self).__init__(name)
+        self.node = None
+        self.sub = None
+        self.received_id = -1  # -1 signifie "rien reçu"
+
+        self.blackboard = py_trees.blackboard.Client(name="Interface")
+        self.blackboard.register_key(key="known_objects", access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key="target_pose_map", access=py_trees.common.Access.WRITE)
+
+    def setup(self, **kwargs):
+        self.node = kwargs.get('node')
+        # On écoute les commandes de l'utilisateur
+        self.sub = self.node.create_subscription(
+            Int32,
+            '/mission/select_target',
+            self._msg_callback,
+            10
+        )
+
+    def _msg_callback(self, msg):
+        self.node.get_logger().info(f"[UI] Commande reçue : ID {msg.data}")
+        self.received_id = msg.data
+
+    def initialise(self):
+        self.received_id = -1
+        self.node.get_logger().info("[UI] En attente d'une sélection sur /mission/select_target ...")
+
+    def update(self):
+        # 1. Si on n'a rien reçu, on renvoie RUNNING (l'arbre continue de vivre)
+        if self.received_id == -1:
+            return py_trees.common.Status.RUNNING
+
+        # 2. Si on a reçu un ID, on vérifie s'il est valide
+        objects = self.blackboard.known_objects
+        if not objects:
+            return py_trees.common.Status.FAILURE
+
+        target_id = self.received_id
+        selected_obj = next((o for o in objects if o['id'] == target_id), None)
+
+        if selected_obj:
+            self.node.get_logger().info(f"[UI] Cible #{target_id} validée via Topic.")
+            self.blackboard.target_pose_map = selected_obj['pose']
+            return py_trees.common.Status.SUCCESS
+        else:
+            self.node.get_logger().warn(f"[UI] ID {target_id} invalide ou inconnu !")
+            self.received_id = -1  # On reset et on attend une nouvelle commande
+            return py_trees.common.Status.RUNNING
+
+
+# Mettez à jour ces deux classes dans actions.py
+
+class WaitForStartSignal(py_trees.behaviour.Behaviour):
+    def __init__(self, name="Attente Start"):
+        super(WaitForStartSignal, self).__init__(name)
+        self.node = None
+        self.sub = None
+        self.start_received = False
+
+    def setup(self, **kwargs):
+        self.node = kwargs.get('node')
+        self.sub = self.node.create_subscription(Bool, '/mission/start', self._cb, 10)
+
+    def initialise(self):
+        # CORRECTION : On remet à False quand ce behavior (re)commence
+        # Si l'arbre plante et redémarre, le robot attendra un nouvel appui sur Entrée
+        # au lieu de devenir fou.
+        self.start_received = False
+        self.node.get_logger().info("[Superviseur] En attente du signal START...")
+
+    def _cb(self, msg):
+        if msg.data:
+            self.start_received = True
+
+    def update(self):
+        return py_trees.common.Status.SUCCESS if self.start_received else py_trees.common.Status.RUNNING
+
+
+class ToggleExploration(py_trees.behaviour.Behaviour):
     def __init__(self, name="Toggle Explore", enable=True):
         super(ToggleExploration, self).__init__(name)
         self.enable = enable
         self.node = None
         self.pub = None
+        self.sent_once = False  # Pour éviter le spam
 
     def setup(self, **kwargs):
         self.node = kwargs.get('node')
         self.pub = self.node.create_publisher(Bool, 'explore/resume', 10)
 
     def initialise(self):
-        msg = Bool()
-        msg.data = self.enable
-        self.pub.publish(msg)
-        state = "ON" if self.enable else "OFF"
-        self.node.get_logger().info(f"[Action] Exploration {state}")
+        self.sent_once = False
 
     def update(self):
-        # Une fois le message envoyé, l'action est considérée comme faite
+        # CORRECTION : On n'envoie le message qu'une seule fois par activation
+        if not self.sent_once:
+            msg = Bool()
+            msg.data = self.enable
+            self.pub.publish(msg)
+            self.sent_once = True
+
+            state = "ON" if self.enable else "OFF"
+            # On loggue uniquement quand on envoie vraiment
+            self.node.get_logger().info(f"[Action] Exploration {state}")
+
         return py_trees.common.Status.SUCCESS
-
-
-# Ajoutez ceci à la fin de tb3_autonomy/behaviors/actions.py
-
-class WaitForUserSelection(py_trees.behaviour.Behaviour):
-    def __init__(self, name, node):
-        super(WaitForUserSelection, self).__init__(name)
-        self.node = node
-        self.blackboard = py_trees.blackboard.Client(name="Interface")
-        self.blackboard.register_key(key="known_objects", access=py_trees.common.Access.READ)
-        self.blackboard.register_key(key="target_pose_map", access=py_trees.common.Access.WRITE)
-        self.asked = False
-
-    def initialise(self):
-        self.asked = False
-
-    def update(self):
-        objects = self.blackboard.known_objects
-
-        if not objects:
-            self.node.get_logger().error("Aucun objet trouvé ! Fin de mission.")
-            return py_trees.common.Status.FAILURE
-
-        if not self.asked:
-            print("\n" + "=" * 40)
-            print(f"EXPLORATION TERMINÉE. {len(objects)} objets trouvés.")
-            for obj in objects:
-                print(f" -> ID [{obj['id']}] : X={obj['x']:.2f}, Y={obj['y']:.2f}")
-            print("=" * 40)
-            self.asked = True
-
-        # Note : input() est bloquant. Dans un vrai robot, on ferait ça en asynchrone,
-        # mais pour ce projet, ça mettra l'arbre en pause, ce qui est acceptable ici.
-        try:
-            choice = input("Entrez l'ID de l'objet à récupérer : ")
-            target_id = int(choice)
-            selected_obj = next((o for o in objects if o['id'] == target_id), None)
-
-            if selected_obj:
-                print(f"Cible #{target_id} validée. On y va !")
-                self.blackboard.target_pose_map = selected_obj['pose']
-                return py_trees.common.Status.SUCCESS
-            else:
-                print("ID inconnu, réessayez.")
-                return py_trees.common.Status.RUNNING
-        except ValueError:
-            return py_trees.common.Status.RUNNING

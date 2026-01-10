@@ -2,137 +2,114 @@
 import rclpy
 import py_trees
 import py_trees_ros.trees
-import sys
 from rclpy.node import Node
 import py_trees.visitors
-# Importation de vos comportements (Behaviors)
-# Assurez-vous que les fichiers __init__.py existent dans le dossier behaviors/
+
 from tb3_autonomy.behaviors.vision import ObjectRecorder
 from tb3_autonomy.behaviors.navigation import GoToDetectedTarget, GoToHome
 from tb3_autonomy.behaviors.actions import (
     VisualServoingApproach,
     CatchObject,
     ToggleExploration,
-    WaitForUserSelection
+    WaitForUserSelection,
+    WaitForStartSignal
 )
 
 
 def create_tree(node: Node):
     """
-    Construit l'arbre de comportement.
-    VERSION CORRIGÉE : Suppression des arguments 'node=node' inutiles dans les __init__
+    Architecture corrigée pour éviter le skip de l'exploration
     """
 
-    # --- RACINE ---
+    # --- PHASE 0 : SÉCURITÉ & ATTENTE ---
+    # CORRECTION CRITIQUE 1 : memory=False ici !
+    # Cela force l'arbre à ré-exécuter 'safety_stop' à CHAQUE tick tant qu'on attend.
+    # On spamme donc l'ordre "STOP" pour être sûr que explore_lite ne démarre pas.
     root = py_trees.composites.Sequence(name="Mission_Supervisor", memory=True)
 
+    # --- CORRECTION 1 : memory=True pour arrêter le spam ---
+    # Une fois que Safety Stop a réussi, on ne le refait plus, on attend juste le GO.
+    phase_init = py_trees.composites.Sequence(name="Phase 0: Init", memory=False)
+
+    safety_stop = ToggleExploration(name="Safety Stop (Init)", enable=False)
+    wait_start = WaitForStartSignal(name="Attente GO")
+
+    phase_init.add_children([safety_stop, wait_start])
+
     # --- PHASE 1 : EXPLORATION & SCAN ---
-    phase_explore = py_trees.composites.Parallel(
-        name="Phase 1: Exploration",
+    # CORRECTION CRITIQUE 2 : On sépare l'activation du Timer.
+    # Si on met tout dans un Parallel(SuccessOnOne), l'activation (qui est instantanée)
+    # fait terminer la phase tout de suite.
+    phase_explore_sequence = py_trees.composites.Sequence(name="Phase 1: Seq", memory=True)
+
+    # Étape 1 : On allume
+    action_explore_on = ToggleExploration(name="Auto Explore ON", enable=True)
+
+    # Étape 2 : On attend (Timer) tout en scannant (Recorder)
+    # C'est ce bloc qui va durer 60s
+    scan_and_wait = py_trees.composites.Parallel(
+        name="Scanning...",
         policy=py_trees.common.ParallelPolicy.SuccessOnOne()
     )
 
-    # CORRECTION ICI : On a retiré "node=node"
-    action_explore = ToggleExploration(name="Auto Explore", enable=True)
-
-    # CORRECTION ICI : On a retiré "node=node"
     recorder = ObjectRecorder(name="Scanner 30cm")
 
-    # Timer
     timer_explore = py_trees.decorators.Timeout(
         name="Timer 60s",
-        child=py_trees.behaviours.Running(name="Attente..."),  # <--- Changement ici
+        child=py_trees.behaviours.Running(name="Attente..."),
         duration=60.0
     )
 
-    phase_explore.add_children([action_explore, recorder, timer_explore])
+    scan_and_wait.add_children([recorder, timer_explore])
+
+    # On ajoute les deux étapes à la séquence de la Phase 1
+    phase_explore_sequence.add_children([action_explore_on, scan_and_wait])
 
     # --- PHASE 2 : CHOIX UTILISATEUR ---
     phase_select = py_trees.composites.Sequence(name="Phase 2: Sélection", memory=True)
 
-    # CORRECTION ICI : On a retiré "node=node"
     stop_explore = ToggleExploration(name="Stop Explore", enable=False)
-
-    # ATTENTION : WaitForUserSelection a été défini avec 'node' dans le __init__ dans mon code précédent.
-    # Si vous avez gardé mon code tel quel pour celui-ci, gardez node=node.
-    # Sinon, retirez-le. Dans le doute, je laisse node=node pour celui-ci car c'est un ajout tardif.
-    user_choice = WaitForUserSelection(name="Menu Console", node=node)
+    # Note : node=node est nécessaire ici car on utilise 'self.node' dans le __init__ de votre action
+    user_choice = WaitForUserSelection(name="Menu Console")
 
     phase_select.add_children([stop_explore, user_choice])
 
     # --- PHASE 3 : RÉCUPÉRATION ---
     phase_fetch = py_trees.composites.Sequence(name="Phase 3: Fetch", memory=True)
 
-    # CORRECTION ICI : Suppression de node=node
     nav_approach = GoToDetectedTarget(name="Approche Rapide (Nav2)")
-
-    # CORRECTION ICI : Suppression de node=node
     vis_approach = VisualServoingApproach(name="Approche Fine (Visual)")
-
-    # CORRECTION ICI : Suppression de node=node
     action_catch = CatchObject(name="Action Catch")
-
-    # ATTENTION : Idem que UserSelection, GoToHome avait 'node' dans son __init__
+    # Note : node=node nécessaire ici aussi pour GoToHome
     go_home = GoToHome(name="Retour Base", node=node)
 
     phase_fetch.add_children([nav_approach, vis_approach, action_catch, go_home])
 
     # --- ASSEMBLAGE ---
-    root.add_children([phase_explore, phase_select, phase_fetch])
-
+    root.add_children([phase_init, phase_explore_sequence, phase_select, phase_fetch])
     return root
-
-# Petite classe utilitaire pour le Timer simple
-class Delay(py_trees.behaviour.Behaviour):
-    def __init__(self, name, duration):
-        super().__init__(name)
-        self.duration = duration
-        self.start_time = None
-
-    def initialise(self):
-        self.start_time = time.time()
-
-    def update(self):
-        if time.time() - self.start_time > self.duration:
-            return py_trees.common.Status.SUCCESS
-        return py_trees.common.Status.RUNNING
-
-
-import time
 
 
 def main():
     rclpy.init()
-
-    # Création du noeud ROS pour le superviseur
     node = Node("bt_supervisor")
-
-    # Création de l'arbre
     root = create_tree(node)
 
-    # Wrapper ROS pour l'arbre (gère le tick rate etc.)
     tree = py_trees_ros.trees.BehaviourTree(
         root=root,
-        unicode_tree_debug=True  # Affiche l'arbre dans la console au démarrage
+        unicode_tree_debug=False
     )
 
     try:
-        # Setup (appelle les méthodes .setup() de tous les behaviors)
         tree.setup(node=node, timeout=15.0)
+        print("Superviseur Prêt. Lancez le Mission Controller pour démarrer.")
 
-        print(" démarrage de l'arbre... (CTRL+C pour quitter)")
-        tree.visitors.append(py_trees.visitors.SnapshotVisitor())
-        # Boucle de 'Tick' (Fréquence 10Hz)
+        # On garde le TickRate à 100ms (10Hz)
         tree.tick_tock(period_ms=100)
-
-        # Pour garder le noeud ROS actif (callbacks)
         rclpy.spin(node)
 
     except KeyboardInterrupt:
-        print("Arrêt demandé.")
         pass
-    except Exception as e:
-        print(f"Erreur critique: {e}")
     finally:
         tree.shutdown()
         rclpy.try_shutdown()

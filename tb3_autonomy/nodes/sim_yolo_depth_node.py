@@ -20,7 +20,8 @@ Dependances:
     pip install ultralytics
     # Assure-toi d'avoir torch CUDA (sinon ca tourne en CPU)
 """
-
+import os
+os.environ['ATEN_NNPACK_ENABLED'] = '0'
 import time
 
 import cv2

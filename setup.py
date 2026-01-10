@@ -32,7 +32,7 @@ setup(
         "console_scripts": [
             "supervisor = tb3_autonomy.mission_supervisor:main", # Si celui-ci n'a pas bougé, ne pas toucher
             "bt_supervisor = tb3_autonomy.bt_supervisor:main",   # Celui-ci est à la racine de tb3_autonomy/
-
+            "mission_controller = tb3_autonomy.nodes.controller:main",
             "catch_node = tb3_autonomy.nodes.catch_node:main",
             "sim_yolo_depth = tb3_autonomy.nodes.sim_yolo_depth_node:main",
             "oak_yolo_depth = tb3_autonomy.nodes.oak_yolo_depth_node:main",

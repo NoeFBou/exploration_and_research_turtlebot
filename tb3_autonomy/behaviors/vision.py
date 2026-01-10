@@ -38,7 +38,7 @@ class ObjectRecorder(py_trees.behaviour.Behaviour):
         # Il travaille en "tâche de fond" (Passive monitoring)
 
         if self.latest_msg is None:
-            return py_trees.common.Status.FAILURE
+            return py_trees.common.Status.RUNNING
 
         try:
             # 1. Transformation dans la MAP
@@ -80,7 +80,8 @@ class ObjectRecorder(py_trees.behaviour.Behaviour):
 
             self.latest_msg = None  # Reset
 
-        except Exception as e:
-            pass
 
+        except Exception as e:
+            self.node.get_logger().warn(f"Erreur Vision: {e}")
+            pass
         return py_trees.common.Status.RUNNING
