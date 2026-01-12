@@ -6,7 +6,22 @@ from geometry_msgs.msg import Twist, PoseStamped
 from std_msgs.msg import Bool, Int32
 import tf2_ros
 from tf2_geometry_msgs import do_transform_pose
+import time
 
+class WaitDuration(py_trees.behaviour.Behaviour):
+    def __init__(self, name="Timer", duration=60.0):
+        super(WaitDuration, self).__init__(name)
+        self.duration = duration
+        self.start_time = None
+
+    def initialise(self):
+        self.start_time = time.time()
+
+    def update(self):
+        elapsed = time.time() - self.start_time
+        if elapsed > self.duration:
+            return py_trees.common.Status.SUCCESS # <--- C'est la clé !
+        return py_trees.common.Status.RUNNING
 
 class VisualServoingApproach(py_trees.behaviour.Behaviour):
     """

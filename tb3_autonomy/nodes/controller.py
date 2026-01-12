@@ -6,130 +6,84 @@ from visualization_msgs.msg import MarkerArray
 import threading
 import time
 
-
 class MissionController(Node):
     def __init__(self):
         super().__init__('mission_controller')
-
-        # Publisher pour envoyer l'ordre au robot
         self.pub_choice = self.create_publisher(Int32, '/mission/select_target', 10)
         self.pub_start = self.create_publisher(Bool, '/mission/start', 10)
-        # Subscriber pour voir la liste des objets (publiée par le superviseur)
+
         self.sub_markers = self.create_subscription(
-            MarkerArray,
-            '/supervisor/known_objects',
-            self.markers_cb,
-            10
+            MarkerArray, '/supervisor/known_objects', self.markers_cb, 10
         )
         self.known_ids = []
-        self.mission_started = False
-
-        self.print_menu_timer = self.create_timer(2.0, self.display_loop)
-        self.get_logger().info("--- CONTRÔLEUR DE MISSION ---")
-        self.get_logger().info("Attente de données du superviseur...")
 
     def markers_cb(self, msg):
-        # On extrait juste les IDs des marqueurs de type TEXTE
         current_ids = []
         for m in msg.markers:
-            if m.ns == "ids":  # On filtre pour ne pas avoir les doublons (sphères)
-                # Le texte est "ID X", on récupère X
-                try:
-                    obj_id = int(m.text.split()[-1])
-                    current_ids.append(obj_id)
-                except:
-                    pass
-        current_ids = []
-        for m in msg.markers:
+            # On filtre pour ne garder que les IDs (Texte)
             if m.ns == "ids":
                 try:
-                    obj_id = int(m.text.split()[-1])
+                    # Le texte est "ID X (n=...)", on veut juste X
+                    txt = m.text.split()[1] # "ID" est [0], le chiffre est [1]
+                    obj_id = int(txt)
                     current_ids.append(obj_id)
-                except:
-                    pass
+                except: pass
         current_ids.sort()
         self.known_ids = current_ids
 
-    def display_loop(self):
-        # Cette boucle tourne en fond, mais pour l'input propre,
-        # on va le faire dans le main thread.
-        pass
-
-    def ask_user(self):
-        while rclpy.ok():
-            if not self.known_ids:
-                print("En attente d'objets détectés...", end='\r')
-                continue
-
-            print("\n" + "=" * 30)
-            print(" OBJETS DISPONIBLES :")
-            for i in self.known_ids:
-                print(f" -> Objet #{i}")
-            print("=" * 30)
-
-            try:
-                raw = input("Entrez l'ID à récupérer : ")
-                choice = int(raw)
-
-                # Envoi de la commande
-                msg = Int32()
-                msg.data = choice
-                self.pub_choice.publish(msg)
-                print(f" >> Commande envoyée : {choice}")
-
-            except ValueError:
-                print("Erreur : Entrez un nombre entier.")
-
     def run_interface(self):
         # --- PHASE 1 : DÉMARRAGE ---
-        print("\n" + "#" * 40)
+        print("\n" + "#"*40)
         print("PRÊT À DÉMARRER LA MISSION")
-        print("Vérifiez que l'IA est chargée et que Gazebo est prêt.")
-        print("#" * 40)
+        print("#"*40)
 
         input(">>> Appuyez sur [ENTRÉE] pour lancer l'exploration...")
 
-        msg = Bool()
-        msg.data = True
-        self.pub_start.publish(msg)
-        print(">> Signal de départ envoyé !")
-        self.mission_started = True
+        self.pub_start.publish(Bool(data=True))
+        print(">> Signal envoyé ! Exploration de 60s en cours...")
 
-        # --- PHASE 2 : SÉLECTION (Votre code précédent) ---
-        print("\nExploration en cours... (Patientez 60s)")
+        # --- PHASE 2 : ATTENTE MANUELLE ---
+        print("\n" + "!"*50)
+        print("LA LISTE SE REMPLIT EN ARRIÈRE-PLAN.")
+        print("Attendez la fin des 60s (ou quand vous voulez).")
+        print("Appuyez sur [ENTRÉE] pour figer la liste et choisir.")
+        print("!"*50)
 
+        # Ce input() bloque le script, mais le thread ROS continue de mettre à jour known_ids
+        input()
+
+        # --- PHASE 3 : CHOIX ---
         while rclpy.ok():
             if not self.known_ids:
-                # Petite animation d'attente
-                for char in "|/-\\":
-                    print(f"En attente d'objets détectés... {char}", end='\r')
-                    time.sleep(0.1)
+                print("Aucun objet trouvé pour l'instant... Attente...", end='\r')
+                time.sleep(1.0)
                 continue
 
-            print("\n" + "=" * 30)
-            print(" OBJETS DISPONIBLES :")
+            print("\n" + "="*30)
+            print(f" LISTE FINALE ({len(self.known_ids)} objets) :")
             for i in self.known_ids:
                 print(f" -> Objet #{i}")
-            print("=" * 30)
+            print("="*30)
 
             try:
                 raw = input("Entrez l'ID à récupérer : ")
                 choice = int(raw)
 
-                msg_id = Int32()
-                msg_id.data = choice
-                self.pub_choice.publish(msg_id)
-                print(f" >> Commande envoyée : Objet {choice}")
-                break  # On quitte après avoir choisi, ou on peut rester pour changer d'avis
+                if choice in self.known_ids:
+                    self.pub_choice.publish(Int32(data=choice))
+                    print(f" >> Cible #{choice} envoyée au robot !")
+                    break
+                else:
+                    print(f"L'ID {choice} n'est pas dans la liste.")
 
             except ValueError:
                 print("Erreur : Entrez un nombre entier.")
-
 
 def main(args=None):
     rclpy.init(args=args)
     node = MissionController()
 
+    # Thread séparé pour que les callbacks (mise à jour liste) tournent pendant le input()
     spin_thread = threading.Thread(target=rclpy.spin, args=(node,), daemon=True)
     spin_thread.start()
 
@@ -140,7 +94,6 @@ def main(args=None):
     finally:
         node.destroy_node()
         rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()

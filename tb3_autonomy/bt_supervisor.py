@@ -12,7 +12,7 @@ from tb3_autonomy.behaviors.actions import (
     CatchObject,
     ToggleExploration,
     WaitForUserSelection,
-    WaitForStartSignal
+    WaitForStartSignal, WaitDuration
 )
 
 
@@ -54,12 +54,12 @@ def create_tree(node: Node):
 
     recorder = ObjectRecorder(name="Scanner 30cm")
 
-    timer_explore = py_trees.decorators.Timeout(
-        name="Timer 60s",
-        child=py_trees.behaviours.Running(name="Attente..."),
-        duration=60.0
-    )
-
+    # timer_explore = py_trees.decorators.Timeout(
+    #     name="Timer 60s",
+    #     child=py_trees.behaviours.Running(name="Attente..."),
+    #     duration=60.0
+    # )
+    timer_explore = WaitDuration(name="Timer 60s", duration=60.0)
     scan_and_wait.add_children([recorder, timer_explore])
 
     # On ajoute les deux étapes à la séquence de la Phase 1
@@ -105,6 +105,8 @@ def main():
         print("Superviseur Prêt. Lancez le Mission Controller pour démarrer.")
 
         # On garde le TickRate à 100ms (10Hz)
+        tree.visitors.append(py_trees.visitors.SnapshotVisitor())
+
         tree.tick_tock(period_ms=100)
         rclpy.spin(node)
 
