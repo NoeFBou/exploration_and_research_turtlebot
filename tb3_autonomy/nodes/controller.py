@@ -16,14 +16,15 @@ class MissionController(Node):
         self.pub_choice = self.create_publisher(Int32, '/mission/select_target', 10)
         self.pub_start = self.create_publisher(Bool, '/mission/start', 10)
         self.pub_confirm = self.create_publisher(Bool, '/mission/confirmation', 10)
+        self.pub_abort = self.create_publisher(Bool, '/mission/abort', 10)
+        self.pub_skip = self.create_publisher(Bool, '/mission/skip_nav', 10)
 
         # Subscribers
         self.sub_markers = self.create_subscription(MarkerArray, '/supervisor/known_objects', self.markers_cb, 10)
         self.sub_status = self.create_subscription(String, '/mission/robot_status', self.status_cb, 10)
-        self.pub_skip = self.create_publisher(Bool, '/mission/skip_nav', 10)
+
         self.known_ids = []
         self.robot_state = "IDLE"
-        self.waiting_for_input = False
 
     def markers_cb(self, msg):
         current_ids = []
@@ -38,8 +39,13 @@ class MissionController(Node):
         self.known_ids = current_ids
 
     def status_cb(self, msg):
-        if msg.data == "WAITING_CONFIRMATION":
-            self.robot_state = "ARRIVED"
+        # Mise à jour des statuts selon ce que l'arbre envoie
+        if msg.data == "WAITING_ALIGNMENT":
+            self.robot_state = "READY_TO_ALIGN"
+        elif msg.data == "WAITING_CATCH" or msg.data == "WAITING_CONFIRMATION":
+            self.robot_state = "READY_TO_CATCH"
+        elif msg.data == "IDLE":
+            self.robot_state = "IDLE"
 
     def run_interface(self):
         # --- PHASE 1 : DÉMARRAGE ---
@@ -54,13 +60,12 @@ class MissionController(Node):
         # --- BOUCLE PRINCIPALE ---
         while rclpy.ok():
 
-            # CAS A : On doit choisir un objet (Le robot attend au menu)
-            # On détecte cela si on n'est PAS en train d'attendre une validation d'arrivée
-            if self.robot_state != "ARRIVED":
+            # Affiche le menu seulement si le robot est libre (IDLE)
+            if self.robot_state == "IDLE":
                 print("\n" + "="*40)
                 print("MENU DE SÉLECTION (Appuyez sur ENTRÉE pour rafraîchir)")
                 print("="*40)
-                input() # Pause pour laisser le temps aux logs d'arriver ou juste attendre
+                input() # Pause attente
 
                 if not self.known_ids:
                     print("Aucun objet détecté pour l'instant.")
@@ -75,67 +80,89 @@ class MissionController(Node):
                 try:
                     choice = int(raw)
                     if choice in self.known_ids:
+                        # On s'assure que le robot est réveillé
                         self.pub_start.publish(Bool(data=True))
                         time.sleep(0.2)
 
                         self.pub_choice.publish(Int32(data=choice))
                         print(f" >> Cible #{choice} envoyée ! Le robot y va...")
-                        self.robot_state = "MOVING"
-                        self.wait_for_arrival()
+
+                        self.robot_state = "MOVING" # On verrouille le menu
+                        self.wait_for_arrival()     # On passe en mode surveillance
                     else:
                         print("ID inconnu.")
                 except ValueError:
                     print("Entrée invalide.")
 
+            # Petite pause pour ne pas surcharger le CPU si la boucle tourne à vide
+            time.sleep(0.1)
+
     def wait_for_arrival(self):
-        """
-        Attend que le robot arrive OU que l'utilisateur appuie sur 's'.
-        """
-        print("Déplacement en cours...")
-        print(" [S] + ENTRÉE : Pour forcer l'arrêt (Skip Nav)")
-        print(" (Surveillez Gazebo)")
+        print("Déplacement en cours... [S]=Skip")
 
         while rclpy.ok():
-            # 1. Vérification arrivée Robot
-            if self.robot_state == "ARRIVED":
-                print("\n" + "!"*40)
-                print("LE ROBOT EST ARRIVÉ (Confirmé par le Superviseur) !")
-                print("!"*40)
-                self.ask_catch() # On lance le dialogue
-                return
-
-                # 2. Vérification Entrée Utilisateur (Non-bloquant)
-            # select vérifie si des données sont prêtes à être lues sur stdin
+            # 1. Gestion du SKIP
             if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
                 line = sys.stdin.readline().strip()
                 if line.lower() == 's':
                     print("\n>> COMMANDE SKIP ENVOYÉE !")
                     self.pub_skip.publish(Bool(data=True))
-                    # On n'attend pas 'ARRIVED', on suppose que le robot va s'arrêter
-                    # et passer à la suite (Validation)
-                    # Mais pour être propre, on continue d'attendre que le superviseur
-                    # passe à l'état "WAITING_CONFIRMATION"
-                else:
-                    print("Touche ignorée. Tapez 's' pour passer.")
+
+            # 2. CAS A : Le robot est arrivé (Nav2) et demande s'il peut s'aligner
+            if self.robot_state == "READY_TO_ALIGN":
+                print("\n" + "!"*40)
+                print("ROBOT ARRIVÉ (Nav2).")
+                print("!"*40)
+
+                while True:
+                    # Question 1
+                    q1 = input("Voulez-vous essayer d'attraper cet objet ? (o/n) : ").lower()
+                    if q1 in ['n', 'non', 'no']:
+                        print(">> ABANDON. Retour au menu.")
+                        self.pub_abort.publish(Bool(data=True))
+                        self.pub_confirm.publish(Bool(data=False))
+                        self.robot_state = "IDLE"
+                        return # Retour au menu
+                    elif q1 in ['o', 'y', 'oui', 'yes']:
+                        print(">> OK, Alignement et Approche en cours...")
+                        self.pub_confirm.publish(Bool(data=True)) # Lance Rotation + Vision
+                        self.robot_state = "MOVING"
+                        break # Sort de la question pour revenir à la surveillance
+                    else:
+                        print("Répondez par 'o' ou 'n'.")
+
+            # 3. CAS B : Le robot s'est aligné/approché et demande s'il peut pincer
+            if self.robot_state == "READY_TO_CATCH":
+                print("\n" + "!"*40)
+                print("ROBOT ALIGNÉ ET PROCHE (22cm).")
+                print("!"*40)
+
+                # Question 2 (Boucle d'ajustement)
+                while True:
+                    resp = input("Pincer maintenant ? (o/n) : ").lower()
+                    if resp in ['o', 'y', 'oui', 'yes']:
+                        self.pub_confirm.publish(Bool(data=True))
+                        print(">> Catch envoyé ! Retour base en cours...")
+
+                        # On ne force pas IDLE tout de suite. On attend que le robot
+                        # finisse son "GoToHome" et nous envoie lui-même "IDLE".
+                        self.robot_state = "MOVING"
+                        break # On sort de la question, mais on reste dans wait_for_arrival
+
+                    elif resp in ['n', 'non', 'no']:
+                        self.pub_confirm.publish(Bool(data=False))
+                        print(">> Refus. Le robot va reculer et réessayer...")
+                        self.robot_state = "MOVING"
+                        break
+                    else:
+                        print("Répondez par 'o' ou 'n'.")
+
+            # 4. CAS C : Retour Menu (Synchronisation)
+            if self.robot_state == "IDLE":
+                print("\n>>> Retour au menu principal (Robot prêt).")
+                return
 
             time.sleep(0.1)
-
-    def ask_catch(self):
-        """Dialogue de validation séparé pour la clarté"""
-        while True:
-            resp = input("Voulez-vous attraper cet objet ? (o/n) : ").lower()
-            if resp in ['o', 'y', 'oui', 'yes']:
-                self.pub_confirm.publish(Bool(data=True))
-                print(">> Catch en cours !")
-                self.robot_state = "IDLE"
-                return
-            elif resp in ['n', 'non', 'no']:
-                self.pub_confirm.publish(Bool(data=False))
-                print(">> Annulation. Retour au menu...")
-                self.robot_state = "IDLE"
-                return
-            else:
-                print("Répondez par 'o' ou 'n'.")
 
 def main(args=None):
     rclpy.init(args=args)
@@ -152,8 +179,6 @@ def main(args=None):
     except Exception as e:
         print(f"Erreur: {e}")
     finally:
-        # Pas de destroy_node explicite ici pour éviter le crash 'terminate called'
-        # rclpy.shutdown() suffira car le thread est daemon
         rclpy.shutdown()
 
 if __name__ == '__main__':

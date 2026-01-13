@@ -12,25 +12,45 @@ from tb3_autonomy.behaviors.actions import (
     CatchObject,
     ToggleExploration,
     WaitForUserSelection,
-    WaitForStartSignal, WaitDuration, WaitForConfirmation, WaitForSkipSignal
+    RotateToTarget,
+    WaitForStartSignal,
+    WaitDuration,
+    WaitForConfirmation,
+    WaitForSkipSignal,
+    BackUp,
+    ForceFailure,
+    WaitForAbortSignal
 )
 
 
 def create_tree(node: Node):
     """
-    Architecture corrigée avec OneShot pour éviter la ré-exploration
+    Architecture Finale : Exploration OneShot + Nav Skipable + Alignement + Retry Loop + Abort + Home Skipable
     """
 
     # --- RACINE ---
     root = py_trees.composites.Sequence(name="Mission_Supervisor", memory=True)
 
-    # --- PHASE 0 : INIT ---
-    phase_init = py_trees.composites.Sequence(name="Phase 0: Init", memory=False)
+    # =========================================================================
+    # --- PHASE 0 : SÉCURITÉ & ATTENTE ---
+    # =========================================================================
+    phase_init_sequence = py_trees.composites.Sequence(name="Phase 0: Seq", memory=False)
+
     safety_stop = ToggleExploration(name="Safety Stop (Init)", enable=False)
     wait_start = WaitForStartSignal(name="Attente GO")
-    phase_init.add_children([safety_stop, wait_start])
 
+    phase_init_sequence.add_children([safety_stop, wait_start])
+
+    # Protection OneShot pour ne pas refaire l'init si l'arbre redémarre
+    phase_init_oneshot = py_trees.decorators.OneShot(
+        child=phase_init_sequence,
+        name="Init Unique",
+        policy=py_trees.common.OneShotPolicy.ON_SUCCESSFUL_COMPLETION
+    )
+
+    # =========================================================================
     # --- PHASE 1 : EXPLORATION ---
+    # =========================================================================
     phase_explore_sequence = py_trees.composites.Sequence(name="Phase 1: Seq", memory=True)
 
     action_explore_on = ToggleExploration(name="Auto Explore ON", enable=True)
@@ -43,30 +63,35 @@ def create_tree(node: Node):
     timer_explore = WaitDuration(name="Timer 60s", duration=60.0)
 
     scan_and_wait.add_children([recorder, timer_explore])
+
     phase_explore_sequence.add_children([action_explore_on, scan_and_wait])
 
-    # =========================================================================
-    # CORRECTION 1 : ON ENVELOPPE LA PHASE 1 DANS UN ONESHOT
-    # =========================================================================
+    # Protection OneShot pour ne pas relancer l'exploration après une mission
     phase_explore_oneshot = py_trees.decorators.OneShot(
         child=phase_explore_sequence,
         name="Exploration Unique",
-        policy=py_trees.common.OneShotPolicy.ON_SUCCESSFUL_COMPLETION  # <--- LIGNE AJOUTÉE
+        policy=py_trees.common.OneShotPolicy.ON_SUCCESSFUL_COMPLETION
     )
 
+    # =========================================================================
     # --- PHASE 2 : SÉLECTION ---
+    # =========================================================================
     phase_select = py_trees.composites.Sequence(name="Phase 2: Sélection", memory=True)
     stop_explore = ToggleExploration(name="Stop Explore", enable=False)
     user_choice = WaitForUserSelection(name="Menu Console")
     phase_select.add_children([stop_explore, user_choice])
 
-    # --- PHASE 3 : FETCH ---
+    # =========================================================================
+    # --- PHASE 3 : RÉCUPÉRATION (FETCH) ---
+    # =========================================================================
     phase_fetch = py_trees.composites.Sequence(name="Phase 3: Fetch", memory=True)
 
+    # ---------------------------------------------------------
+    # 1. NAVIGATION NAV2 (Groupe Nav + Skip)
+    # ---------------------------------------------------------
     move_sequence = py_trees.composites.Sequence(name="Séquence Déplacement", memory=True)
     nav_approach = GoToDetectedTarget(name="Approche Rapide (Nav2)")
-    vis_approach = VisualServoingApproach(name="Approche Fine (Visual)")
-    move_sequence.add_children([nav_approach, vis_approach])
+    move_sequence.add_children([nav_approach])
 
     approach_with_skip = py_trees.composites.Parallel(
         name="Approche ou Skip",
@@ -75,19 +100,91 @@ def create_tree(node: Node):
     wait_skip = WaitForSkipSignal(name="Bouton Skip")
     approach_with_skip.add_children([move_sequence, wait_skip])
 
-    ask_confirm = WaitForConfirmation(name="Validation Humaine")
+    # ---------------------------------------------------------
+    # 2. BOUCLE D'APPROCHE FINALE (Alignement -> Avance -> Catch)
+    # ---------------------------------------------------------
+    attempt_sequence = py_trees.composites.Sequence(name="Tentative Catch", memory=True)
+
+    # Etape A : Demande si on peut s'aligner (WAITING_ALIGNMENT)
+    ask_alignment = WaitForConfirmation(
+        name="Demande Alignement",
+        status_msg="WAITING_ALIGNMENT"
+    )
+
+    # Etape B : Rotation pure
+    rotate_to_target = RotateToTarget(name="Rotation Visuelle", threshold=0.05)
+
+    # Etape C : Avance pure
+    vis_approach = VisualServoingApproach(name="Avance Fine")
+
+    # Etape D : Décision Finale (Catch ou Retry)
+    decision_selector = py_trees.composites.Selector(name="Validation ou Recul", memory=False)
+
+    # D.1 : Branche OUI (Catch)
+    commit_sequence = py_trees.composites.Sequence(name="Branche: OUI", memory=True)
+    # Attention : message WAITING_CATCH pour que le contrôleur sache que c'est la fin
+    ask_confirm = WaitForConfirmation(name="Validation Catch", status_msg="WAITING_CATCH")
     action_catch = CatchObject(name="Action Catch")
+    commit_sequence.add_children([ask_confirm, action_catch])
+
+    # D.2 : Branche NON (Recul)
+    retry_sequence = py_trees.composites.Sequence(name="Branche: NON", memory=True)
+    back_up = BackUp(name="Reculer", duration=2.5, speed=-0.15)
+    force_fail = ForceFailure(name="Restart Loop")
+    retry_sequence.add_children([back_up, force_fail])
+
+    decision_selector.add_children([commit_sequence, retry_sequence])
+
+    # -- Assemblage de la séquence de tentative --
+    attempt_sequence.add_children([ask_alignment, rotate_to_target, vis_approach, decision_selector])
+
+    # -- Enveloppe RETRY (Réessaie indéfiniment tant que pas Catch) --
+    final_approach_loop = py_trees.decorators.Retry(
+        child=attempt_sequence,
+        name="Boucle Approche/Retry",
+        num_failures=100
+    )
+
+    # -- Enveloppe ABORT (Permet de quitter la boucle Retry) --
+    loop_or_abort = py_trees.composites.Parallel(
+        name="Boucle ou Abort",
+        policy=py_trees.common.ParallelPolicy.SuccessOnOne()
+    )
+    wait_abort = WaitForAbortSignal(name="Bouton Abort")
+    loop_or_abort.add_children([final_approach_loop, wait_abort])
+
+    # ---------------------------------------------------------
+    # 3. RETOUR BASE (Skipable)
+    # ---------------------------------------------------------
+    home_with_skip = py_trees.composites.Parallel(
+        name="Retour ou Skip",
+        policy=py_trees.common.ParallelPolicy.SuccessOnOne()
+    )
+
     go_home = GoToHome(name="Retour Base", node=node)
+    wait_skip_home = WaitForSkipSignal(name="Skip Retour") # Instance séparée !
 
-    phase_fetch.add_children([approach_with_skip, ask_confirm, action_catch, go_home])
+    home_with_skip.add_children([go_home, wait_skip_home])
 
-    root.add_children([phase_init, phase_explore_oneshot, phase_select, phase_fetch])
+
+    # =========================================================================
+    # --- ASSEMBLAGE FINAL DE LA PHASE 3 ---
+    # =========================================================================
+    phase_fetch.add_children([approach_with_skip, loop_or_abort, home_with_skip])
+
+    # =========================================================================
+    # --- RACINE ---
+    # =========================================================================
+    root.add_children([phase_init_oneshot, phase_explore_oneshot, phase_select, phase_fetch])
 
     return root
+
 
 def main():
     rclpy.init()
     node = Node("bt_supervisor")
+
+    # Création de l'arbre
     root = create_tree(node)
 
     tree = py_trees_ros.trees.BehaviourTree(
