@@ -18,88 +18,72 @@ from tb3_autonomy.behaviors.actions import (
 
 def create_tree(node: Node):
     """
-    Architecture corrigée pour éviter le skip de l'exploration
+    Architecture corrigée avec OneShot pour éviter la ré-exploration
     """
 
-    # --- PHASE 0 : SÉCURITÉ & ATTENTE ---
-    # CORRECTION CRITIQUE 1 : memory=False ici !
-    # Cela force l'arbre à ré-exécuter 'safety_stop' à CHAQUE tick tant qu'on attend.
-    # On spamme donc l'ordre "STOP" pour être sûr que explore_lite ne démarre pas.
+    # --- RACINE ---
     root = py_trees.composites.Sequence(name="Mission_Supervisor", memory=True)
 
-    # --- CORRECTION 1 : memory=True pour arrêter le spam ---
-    # Une fois que Safety Stop a réussi, on ne le refait plus, on attend juste le GO.
+    # --- PHASE 0 : INIT ---
     phase_init = py_trees.composites.Sequence(name="Phase 0: Init", memory=False)
-
     safety_stop = ToggleExploration(name="Safety Stop (Init)", enable=False)
     wait_start = WaitForStartSignal(name="Attente GO")
-
     phase_init.add_children([safety_stop, wait_start])
 
-    # --- PHASE 1 : EXPLORATION & SCAN ---
-    # CORRECTION CRITIQUE 2 : On sépare l'activation du Timer.
-    # Si on met tout dans un Parallel(SuccessOnOne), l'activation (qui est instantanée)
-    # fait terminer la phase tout de suite.
+    # --- PHASE 1 : EXPLORATION ---
     phase_explore_sequence = py_trees.composites.Sequence(name="Phase 1: Seq", memory=True)
 
-    # Étape 1 : On allume
     action_explore_on = ToggleExploration(name="Auto Explore ON", enable=True)
 
-    # Étape 2 : On attend (Timer) tout en scannant (Recorder)
-    # C'est ce bloc qui va durer 60s
     scan_and_wait = py_trees.composites.Parallel(
         name="Scanning...",
         policy=py_trees.common.ParallelPolicy.SuccessOnOne()
     )
-
     recorder = ObjectRecorder(name="Scanner 30cm")
-
-    # timer_explore = py_trees.decorators.Timeout(
-    #     name="Timer 60s",
-    #     child=py_trees.behaviours.Running(name="Attente..."),
-    #     duration=60.0
-    # )
     timer_explore = WaitDuration(name="Timer 60s", duration=60.0)
-    scan_and_wait.add_children([recorder, timer_explore])
 
-    # On ajoute les deux étapes à la séquence de la Phase 1
+    scan_and_wait.add_children([recorder, timer_explore])
     phase_explore_sequence.add_children([action_explore_on, scan_and_wait])
 
-    # --- PHASE 2 : CHOIX UTILISATEUR ---
-    phase_select = py_trees.composites.Sequence(name="Phase 2: Sélection", memory=True)
-
-    stop_explore = ToggleExploration(name="Stop Explore", enable=False)
-    # Note : node=node est nécessaire ici car on utilise 'self.node' dans le __init__ de votre action
-    user_choice = WaitForUserSelection(name="Menu Console")
-
-    phase_select.add_children([stop_explore, user_choice])
-
-    # --- PHASE 3 : RÉCUPÉRATION ---
-    phase_fetch = py_trees.composites.Sequence(name="Phase 3: Fetch", memory=True)
-
-    # 1. NAVIGATION "SKIPABLE" (Bloc Parallèle)
-    # Le premier qui finit (Nav ou Skip) gagne et arrête l'autre.
-    nav_with_skip = py_trees.composites.Parallel(
-        name="Nav ou Skip",
-        policy=py_trees.common.ParallelPolicy.SuccessOnOne()
+    # =========================================================================
+    # CORRECTION 1 : ON ENVELOPPE LA PHASE 1 DANS UN ONESHOT
+    # =========================================================================
+    phase_explore_oneshot = py_trees.decorators.OneShot(
+        child=phase_explore_sequence,
+        name="Exploration Unique",
+        policy=py_trees.common.OneShotPolicy.ON_SUCCESSFUL_COMPLETION  # <--- LIGNE AJOUTÉE
     )
 
+    # --- PHASE 2 : SÉLECTION ---
+    phase_select = py_trees.composites.Sequence(name="Phase 2: Sélection", memory=True)
+    stop_explore = ToggleExploration(name="Stop Explore", enable=False)
+    user_choice = WaitForUserSelection(name="Menu Console")
+    phase_select.add_children([stop_explore, user_choice])
+
+    # --- PHASE 3 : FETCH ---
+    phase_fetch = py_trees.composites.Sequence(name="Phase 3: Fetch", memory=True)
+
+    move_sequence = py_trees.composites.Sequence(name="Séquence Déplacement", memory=True)
     nav_approach = GoToDetectedTarget(name="Approche Rapide (Nav2)")
-    wait_skip = WaitForSkipSignal(name="Bouton Skip")
-
-    nav_with_skip.add_children([nav_approach, wait_skip])
-
-    # 2. Le reste ne change pas
     vis_approach = VisualServoingApproach(name="Approche Fine (Visual)")
+    move_sequence.add_children([nav_approach, vis_approach])
+
+    approach_with_skip = py_trees.composites.Parallel(
+        name="Approche ou Skip",
+        policy=py_trees.common.ParallelPolicy.SuccessOnOne()
+    )
+    wait_skip = WaitForSkipSignal(name="Bouton Skip")
+    approach_with_skip.add_children([move_sequence, wait_skip])
+
     ask_confirm = WaitForConfirmation(name="Validation Humaine")
     action_catch = CatchObject(name="Action Catch")
     go_home = GoToHome(name="Retour Base", node=node)
 
-    # Notez qu'on ajoute 'nav_with_skip' au lieu de 'nav_approach'
-    phase_fetch.add_children([nav_with_skip, vis_approach, ask_confirm, action_catch, go_home])
-    root.add_children([phase_init, phase_explore_sequence, phase_select, phase_fetch])
-    return root
+    phase_fetch.add_children([approach_with_skip, ask_confirm, action_catch, go_home])
 
+    root.add_children([phase_init, phase_explore_oneshot, phase_select, phase_fetch])
+
+    return root
 
 def main():
     rclpy.init()
