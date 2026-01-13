@@ -12,7 +12,7 @@ class ObjectRecorder(py_trees.behaviour.Behaviour):
     def __init__(self, name="Recorder", topic_name="/target_object_pose"):
         super(ObjectRecorder, self).__init__(name)
         self.topic_name = topic_name
-        self.min_distance = 0.5 #50cm
+        self.min_distance = 0.7#70cm
 
         self.blackboard = py_trees.blackboard.Client(name="Vision")
         self.blackboard.register_key(key="known_objects", access=py_trees.common.Access.WRITE)

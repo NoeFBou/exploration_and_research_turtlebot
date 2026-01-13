@@ -12,7 +12,7 @@ from tb3_autonomy.behaviors.actions import (
     CatchObject,
     ToggleExploration,
     WaitForUserSelection,
-    WaitForStartSignal, WaitDuration
+    WaitForStartSignal, WaitDuration, WaitForConfirmation, WaitForSkipSignal
 )
 
 
@@ -77,15 +77,26 @@ def create_tree(node: Node):
     # --- PHASE 3 : RÉCUPÉRATION ---
     phase_fetch = py_trees.composites.Sequence(name="Phase 3: Fetch", memory=True)
 
+    # 1. NAVIGATION "SKIPABLE" (Bloc Parallèle)
+    # Le premier qui finit (Nav ou Skip) gagne et arrête l'autre.
+    nav_with_skip = py_trees.composites.Parallel(
+        name="Nav ou Skip",
+        policy=py_trees.common.ParallelPolicy.SuccessOnOne()
+    )
+
     nav_approach = GoToDetectedTarget(name="Approche Rapide (Nav2)")
+    wait_skip = WaitForSkipSignal(name="Bouton Skip")
+
+    nav_with_skip.add_children([nav_approach, wait_skip])
+
+    # 2. Le reste ne change pas
     vis_approach = VisualServoingApproach(name="Approche Fine (Visual)")
+    ask_confirm = WaitForConfirmation(name="Validation Humaine")
     action_catch = CatchObject(name="Action Catch")
-    # Note : node=node nécessaire ici aussi pour GoToHome
     go_home = GoToHome(name="Retour Base", node=node)
 
-    phase_fetch.add_children([nav_approach, vis_approach, action_catch, go_home])
-
-    # --- ASSEMBLAGE ---
+    # Notez qu'on ajoute 'nav_with_skip' au lieu de 'nav_approach'
+    phase_fetch.add_children([nav_with_skip, vis_approach, ask_confirm, action_catch, go_home])
     root.add_children([phase_init, phase_explore_sequence, phase_select, phase_fetch])
     return root
 

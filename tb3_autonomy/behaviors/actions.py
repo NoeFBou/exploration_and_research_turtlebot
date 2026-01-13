@@ -3,7 +3,7 @@ import py_trees
 import math
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, PoseStamped
-from std_msgs.msg import Bool, Int32
+from std_msgs.msg import Bool, Int32,String
 import tf2_ros
 from tf2_geometry_msgs import do_transform_pose
 import time
@@ -51,15 +51,14 @@ class VisualServoingApproach(py_trees.behaviour.Behaviour):
         self.node.get_logger().info("[Action] Démarrage approche visuelle...")
 
     def update(self):
-        # 1. Récupérer la cible mémorisée (dans le repère MAP)
         target_map = self.blackboard.target_pose_map
         if target_map is None:
-            self.cmd_vel_pub.publish(Twist())  # Stop par sécurité
             return py_trees.common.Status.FAILURE
 
-        # 2. Transformer cette cible dans le repère du ROBOT (base_link)
-        # Cela nous permet de savoir où est l'objet PAR RAPPORT au robot maintenant
         try:
+            # On cherche la transformation map -> base_link
+            # Attention : pour savoir où est l'objet par rapport au robot,
+            # on transforme de MAP vers BASE_LINK
             transform = self.tf_buffer.lookup_transform(
                 'base_link',
                 'map',
@@ -67,40 +66,36 @@ class VisualServoingApproach(py_trees.behaviour.Behaviour):
             )
             target_local = do_transform_pose(target_map.pose, transform)
         except Exception as e:
-            self.node.get_logger().warn(f"[Action] Erreur TF: {e}")
-            self.cmd_vel_pub.publish(Twist())
+            # Si TF échoue, on continue d'essayer sans planter
             return py_trees.common.Status.RUNNING
 
-        # 3. Extraire les coordonnées locales (comme dans votre ancien code)
-        # Note : target_local est une Pose, pas un PoseStamped ici
-        x_obj = target_local.position.y  # Attention : Y robot = gauche/droite (latéral)
-        z_obj = target_local.position.x  # Attention : X robot = devant (profondeur)
+        # Coordonnées dans le repère du robot (X=Devant, Y=Gauche)
+        x_dist = target_local.position.x  # Distance devant
+        y_lat  = target_local.position.y  # Décalage latéral
 
-        # Note sur les axes :
-        # Dans votre code Vision, vous utilisiez le repère caméra optique (Z=profondeur, X=latéral).
-        # Ici on a transformé en 'base_link' (convention ROS standard : X=devant, Y=gauche).
-        # Donc "Profondeur" = X du robot, "Latéral" = Y du robot.
+        # --- DEBUG LOG ---
+        # On affiche la distance pour comprendre pourquoi il s'arrête
+        # self.node.get_logger().info(f"[Visual] Dist X={x_dist:.2f}m, Y={y_lat:.2f}m")
 
-        # 4. Condition de Succès (On est assez près)
-        if z_obj <= 0.22:  # 22cm (Marge de sécurité pince)
-            self.node.get_logger().info("[Action] Cible atteinte ! Stop.")
-            self.cmd_vel_pub.publish(Twist())  # Arrêt complet
+        # Condition de Succès (22cm)
+        if x_dist <= 0.22:
+            self.node.get_logger().info(f"[Visual] Stop final (Dist={x_dist:.2f}m).")
+            self.cmd_vel_pub.publish(Twist())
             return py_trees.common.Status.SUCCESS
 
-        # 5. Calcul de la commande (Votre logique P-Controller)
+        # Sécurité : Si l'objet est DERRIERE le robot (X négatif) ou trop loin (>3m en visuel)
+        if x_dist < 0:
+            # On recule doucement ou on pivote ? Pour l'instant on s'arrête pour pas faire de bêtise
+            self.cmd_vel_pub.publish(Twist())
+            self.node.get_logger().warn("[Visual] Objet derrière ! Echec approche.")
+            return py_trees.common.Status.FAILURE
+
+        # Commande Moteur (Asservissement simple)
         twist = Twist()
-
-        # Avancer (Linear X)
-        # Si on est loin (>30cm), on avance à 0.15 m/s, sinon 0.05 m/s
-        twist.linear.x = 0.15 if z_obj > 0.3 else 0.05
-
-        # Tourner (Angular Z)
-        # Correction proportionnelle à l'erreur latérale (Y)
-        # Le gain 2.0 peut être ajusté
-        twist.angular.z = 2.0 * x_obj
+        twist.linear.x = 0.15 if x_dist > 0.4 else 0.05
+        twist.angular.z = 1.5 * y_lat # Gain proportionnel
 
         self.cmd_vel_pub.publish(twist)
-
         return py_trees.common.Status.RUNNING
 
     def terminate(self, new_status):
@@ -255,6 +250,52 @@ class WaitForStartSignal(py_trees.behaviour.Behaviour):
     def update(self):
         return py_trees.common.Status.SUCCESS if self.start_received else py_trees.common.Status.RUNNING
 
+# Ajoutez String aux imports en haut
+from std_msgs.msg import Bool, Int32, String
+
+class WaitForConfirmation(py_trees.behaviour.Behaviour):
+    """
+    Signale au contrôleur que le robot est arrivé et attend une validation (Oui/Non).
+    """
+    def __init__(self, name="Validation Humaine"):
+        super(WaitForConfirmation, self).__init__(name)
+        self.node = None
+        self.pub_status = None
+        self.sub_conf = None
+        self.confirmation = None # None = attente, True = Oui, False = Non
+
+    def setup(self, **kwargs):
+        self.node = kwargs.get('node')
+        # Topic pour dire au contrôleur "Je suis là, demande à l'humain"
+        self.pub_status = self.node.create_publisher(String, '/mission/robot_status', 10)
+        # Topic pour recevoir la réponse de l'humain
+        self.sub_conf = self.node.create_subscription(Bool, '/mission/confirmation', self._cb, 10)
+
+    def initialise(self):
+        self.confirmation = None
+        # On envoie le signal "ARRIVED"
+        msg = String()
+        msg.data = "WAITING_CONFIRMATION"
+        self.pub_status.publish(msg)
+        self.node.get_logger().info("[Superviseur] Arrivé devant l'objet. Attente validation...")
+
+    def _cb(self, msg):
+        self.confirmation = msg.data
+
+    def update(self):
+        if self.confirmation is None:
+            # On renvoie le statut régulièrement au cas où le contrôleur l'ait raté
+            # msg = String()
+            # msg.data = "WAITING_CONFIRMATION"
+            # self.pub_status.publish(msg)
+            return py_trees.common.Status.RUNNING
+
+        if self.confirmation:
+            self.node.get_logger().info("[Superviseur] Validation reçue ! On attrape.")
+            return py_trees.common.Status.SUCCESS
+        else:
+            self.node.get_logger().info("[Superviseur] Refusé. Retour au menu.")
+            return py_trees.common.Status.FAILURE
 
 class ToggleExploration(py_trees.behaviour.Behaviour):
     """
@@ -291,3 +332,31 @@ class ToggleExploration(py_trees.behaviour.Behaviour):
             self.has_logged = True
 
         return py_trees.common.Status.SUCCESS
+
+class WaitForSkipSignal(py_trees.behaviour.Behaviour):
+    """
+    Attend un signal sur '/mission/skip_nav' pour renvoyer SUCCESS immédiatement.
+    Utilisé en parallèle avec la navigation pour permettre une interruption manuelle.
+    """
+    def __init__(self, name="Attente Skip"):
+        super(WaitForSkipSignal, self).__init__(name)
+        self.node = None
+        self.sub = None
+        self.skip_received = False
+
+    def setup(self, **kwargs):
+        self.node = kwargs.get('node')
+        self.sub = self.node.create_subscription(Bool, '/mission/skip_nav', self._cb, 10)
+
+    def initialise(self):
+        self.skip_received = False
+
+    def _cb(self, msg):
+        if msg.data:
+            self.node.get_logger().info("[Superviseur] SKIP REÇU ! Annulation de la navigation...")
+            self.skip_received = True
+
+    def update(self):
+        if self.skip_received:
+            return py_trees.common.Status.SUCCESS
+        return py_trees.common.Status.RUNNING
