@@ -40,12 +40,11 @@ def create_tree(node: Node):
 
     safety_stop = ToggleExploration(name="Safety Stop (Init)", enable=False)
 
-    # AJOUT : On force l'ouverture au démarrage
     init_open = OpenGripper(name="Init: Ouvrir Pince")
 
     wait_start = WaitForStartSignal(name="Attente GO")
 
-    phase_init_sequence.add_children([safety_stop, init_open, wait_start])
+    phase_init_sequence.add_children([safety_stop, wait_start,init_open])
 
     # Protection OneShot pour ne pas refaire l'init si l'arbre redémarre
     phase_init_oneshot = py_trees.decorators.OneShot(

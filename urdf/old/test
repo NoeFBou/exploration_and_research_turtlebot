@@ -347,7 +347,7 @@
   <joint name="joint_oak_d_pro_color_optical_frame" type="fixed">
     <parent link="oak_d_pro_camera"/>
     <child link="oak_d_pro_color_optical_frame"/>
-    <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
   </joint>
 
   <link name="oak_d_pro_depth_optical_frame"/>
@@ -371,14 +371,6 @@
     <child link="counterweight"/>
     <origin xyz="-0.12 0.0 0.0" rpy="0 0 0"/>
   </joint>
-  <link name="oak_d_pro_camera_gz"/>
-  <joint name="joint_oak_d_pro_camera_gz" type="fixed">
-    <parent link="oak_d_pro_camera"/>
-    <child link="oak_d_pro_camera_gz"/>
-    <!-- origin xyz="0 0 0" rpy="0 0 -1.5708"/>-->
-    <origin xyz="0 0 0" rpy="0 -1.57 -1.5708"/>
-  </joint>
-
   <gazebo reference="imu_link">
     <sensor name="tb3_imu" type="imu">
       <always_on>true</always_on>
@@ -410,45 +402,46 @@
 
   <!-- LIDAR 2D (Gazebo Classic = ray/gpu_ray + <ray> ... ) -->
   <gazebo reference="base_scan">
-      <sensor name="hls_lfcd_lds" type="ray">
-        <always_on>true</always_on>
-        <visualize>true</visualize> <pose>0 0 0.01 0 0 0</pose> <update_rate>5</update_rate>
-        <ray>
-          <scan>
-            <horizontal>
-              <samples>360</samples>
-              <resolution>1</resolution>
-              <min_angle>0.0</min_angle>
-              <max_angle>6.28</max_angle>
-            </horizontal>
-          </scan>
-          <range>
-            <min>0.12</min>
-            <max>3.5</max>
-            <resolution>0.015</resolution>
-          </range>
-          <noise type="gaussian">
-            <mean>0.0</mean>
-            <stddev>0.01</stddev>
-          </noise>
-        </ray>
-        <plugin name="tb3_laser_ros" filename="libgazebo_ros_ray_sensor.so">
-          <ros>
-            <namespace>/</namespace>
-            <remapping>~/out:=scan</remapping>
-          </ros>
-          <output_type>sensor_msgs/LaserScan</output_type>
-          <frame_name>base_scan</frame_name>
-        </plugin>
-      </sensor>
-    </gazebo>
+    <sensor name="hls_lfcd_lds" type="gpu_ray">
+      <always_on>true</always_on>
+      <visualize>true</visualize>
+      <update_rate>15</update_rate>
+
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>360</samples>
+            <resolution>1</resolution>
+            <min_angle>0.0</min_angle>
+            <max_angle>6.28</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.12</min>
+          <max>3.5</max>
+          <resolution>0.015</resolution>
+        </range>
+        <noise type="gaussian">
+          <mean>0.0</mean>
+          <stddev>0.01</stddev>
+        </noise>
+      </ray>
+
+      <plugin name="tb3_laser_ros" filename="libgazebo_ros_ray_sensor.so">
+        <ros>
+          <namespace>/</namespace>
+          <remapping>~/out:=scan</remapping>
+        </ros>
+        <output_type>sensor_msgs/LaserScan</output_type>
+        <frame_name>base_scan</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
 
   <!-- RGB camera -->
-  <gazebo reference="oak_d_pro_camera_gz">
-
+  <gazebo reference="oak_d_pro_color_optical_frame">
     <sensor name="rgb_camera" type="camera">
-          <pose>0 0 0 0 0 0</pose>
-
+      <pose>0 0 0 3.14 -1.5708 1.5708</pose>
       <always_on>true</always_on>
       <update_rate>30</update_rate>
       <visualize>true</visualize>
@@ -467,25 +460,21 @@
       </camera>
 
       <plugin name="rgb_camera_ros" filename="libgazebo_ros_camera.so">
-
         <ros>
           <namespace>/</namespace>
-          <!-- => /rgb_camera/image -->
-          <remapping>image_raw:=image</remapping>
-          <!-- => /rgb_camera/camera_info -->
-          <remapping>camera_info:=camera_info</remapping>
+          <remapping>image_raw:=rgb_camera/image</remapping>
+          <remapping>camera_info:=rgb_camera/camera_info</remapping>
         </ros>
         <camera_name>rgb_camera</camera_name>
-            <frame_name>oak_d_pro_color_optical_frame</frame_name>
+        <frame_name>oak_d_pro_color_optical_frame</frame_name>
       </plugin>
     </sensor>
   </gazebo>
 
-  <!-- Depth camera -->
+  <!-- Depth camera (le même plugin peut sortir des images depth si le sensor est "depth") -->
   <gazebo reference="oak_d_pro_depth_optical_frame">
     <sensor name="depth_camera" type="depth">
-          <pose>0 0 0 0 0 0</pose>
-
+      <pose>0 0 0 0 0 0</pose>
       <always_on>true</always_on>
       <update_rate>30</update_rate>
       <visualize>true</visualize>
@@ -495,7 +484,6 @@
         <image>
           <width>640</width>
           <height>480</height>
-          <!-- tu peux laisser ça pour la partie "image", la profondeur sortira quand même en depth -->
           <format>R8G8B8</format>
         </image>
         <clip>
@@ -507,17 +495,14 @@
       <plugin name="depth_camera_ros" filename="libgazebo_ros_camera.so">
         <ros>
           <namespace>/</namespace>
-          <!-- => /depth_camera/image -->
-          <remapping>image_raw:=image</remapping>
-          <!-- => /depth_camera/camera_info -->
-          <remapping>camera_info:=camera_info</remapping>
+          <remapping>image_raw:=depth_camera/image</remapping>
+          <remapping>camera_info:=depth_camera/camera_info</remapping>
         </ros>
         <camera_name>depth_camera</camera_name>
         <frame_name>oak_d_pro_depth_optical_frame</frame_name>
       </plugin>
     </sensor>
   </gazebo>
-
 
   <!-- Diff drive (remplace gz-sim-diff-drive-system) -->
   <gazebo>
@@ -567,5 +552,4 @@
       <joint_name>gripper_right_joint</joint_name>
     </plugin>
   </gazebo>
-
 </robot>

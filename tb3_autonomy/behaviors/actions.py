@@ -389,11 +389,13 @@ class CatchObject(py_trees.behaviour.Behaviour):
 
 
 class ToggleExploration(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Toggle Explore", enable=True):
-        super(ToggleExploration, self).__init__(name)
+    def __init__(self, name="Toggle Explore", enable=True, min_publish_time=0.5):
+        super().__init__(name)
         self.enable = enable
+        self.min_publish_time = min_publish_time
         self.node = None
         self.pub = None
+        self.start_time = None
         self.has_logged = False
 
     def setup(self, **kwargs):
@@ -401,16 +403,29 @@ class ToggleExploration(py_trees.behaviour.Behaviour):
         self.pub = self.node.create_publisher(Bool, 'explore/resume', 10)
 
     def initialise(self):
-        pass
+        self.start_time = self.node.get_clock().now()
+        self.has_logged = False
 
     def update(self):
+        # Publie à chaque tick (10 Hz chez toi)
         msg = Bool()
         msg.data = self.enable
         self.pub.publish(msg)
+
         if not self.has_logged:
             state = "ON" if self.enable else "OFF"
-            self.node.get_logger().info(f"[Action] Exploration {state} (commande envoyée)")
+            self.node.get_logger().info(f"[Action] Exploration {state} (publication en cours...)")
             self.has_logged = True
+
+        # Attend qu'il y ait au moins 1 subscriber (explore_lite)
+        if self.pub.get_subscription_count() == 0:
+            return py_trees.common.Status.RUNNING
+
+        # Et publie pendant un court délai pour être sûr que le message passe
+        elapsed = (self.node.get_clock().now() - self.start_time).nanoseconds / 1e9
+        if elapsed < self.min_publish_time:
+            return py_trees.common.Status.RUNNING
+
         return py_trees.common.Status.SUCCESS
 
 class ForceFailure(py_trees.behaviour.Behaviour):

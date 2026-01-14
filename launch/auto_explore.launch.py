@@ -5,6 +5,10 @@ from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable, GroupAction, AppendEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node, PushRosNamespace
+from pathlib import Path
+from launch.actions import ExecuteProcess
+from launch.actions import TimerAction
+
 
 
 def generate_launch_description():
@@ -32,8 +36,13 @@ def generate_launch_description():
     urdf_path = os.path.join(pkg_tb3_autonomy, 'urdf', urdf_file_name)
 
     doc = xacro.process_file(urdf_path)
-    robot_desc = doc.toxml()
+    pkg_share = get_package_share_directory('tb3_autonomy')
 
+    robot_desc = doc.toxml()
+    robot_desc = robot_desc.replace(
+        'package://tb3_autonomy',
+        Path(pkg_share).as_uri()
+    )
     robot_state_publisher_cmd = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -51,22 +60,33 @@ def generate_launch_description():
         arguments=[
             '-topic', 'robot_description',
             '-entity', 'my_custom_waffle',
-            '-x', '-2.0',
-            '-y', '-0.5',
-            '-z', '0.15',
-            '-timeout', '120.0'
+            '-x', '-1.41334', '-y', '-1.24929', '-z', '-0.001062',
+            '-Y', '0.000657'
         ],
         output='screen'
     )
 
     world_path = os.path.join(pkg_tb3_autonomy, 'worlds', 'my_room.sdf')
 
-    gazebo_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_gazebo_ros, 'launch', 'gazebo.launch.py')
-        ),
-        launch_arguments={'world': world_path}.items()
+    # gazebo_cmd = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(pkg_gazebo_ros, 'launch', 'gazebo.launch.py')
+    #     ),
+    #     launch_arguments={'world': world_path}.items()
+    # )
+    gazebo_server = ExecuteProcess(
+        cmd=[
+            'gzserver', '--verbose', world_path,
+            '-s', 'libgazebo_ros_init.so',
+            '-s', 'libgazebo_ros_factory.so',
+        ],
+        output='screen'
     )
+
+    gazebo_client = ExecuteProcess(
+        cmd=['gzclient'],
+        output='screen'
+)
 
     #nav2_params = os.path.join(pkg_nav2_bringup, 'params', 'nav2_params.yaml')
     pkg_tb3_autonomy = get_package_share_directory('tb3_autonomy')
@@ -171,18 +191,20 @@ def generate_launch_description():
         executable='catch_node',
         name='catch_node'
     )
+
+    delayed_explore = TimerAction(period=5.0, actions=[explore_cmd])
     return LaunchDescription([
-        set_gazebo_model_path,
-        env_lidar,
-        env_gl,
-        gazebo_cmd,
-        robot_state_publisher_cmd,
-        spawn_entity_cmd,
-        slam_cmd,
-        navigation_cmd,
-        explore_cmd,
-        rviz_cmd,
-        supervisor,
-        stereo_proc,
-        catch_cmd
-    ])
+            set_gazebo_model_path,
+            env_lidar,
+            env_gl,
+            gazebo_server, gazebo_client,
+            robot_state_publisher_cmd,
+            spawn_entity_cmd,
+            slam_cmd,
+            navigation_cmd,
+            explore_cmd,
+            rviz_cmd,
+            supervisor,
+            stereo_proc,
+            catch_cmd
+        ])
