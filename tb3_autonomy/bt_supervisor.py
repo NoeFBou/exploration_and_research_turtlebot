@@ -19,7 +19,8 @@ from tb3_autonomy.behaviors.actions import (
     WaitForSkipSignal,
     BackUp,
     ForceFailure,
-    WaitForAbortSignal
+    WaitForAbortSignal,
+    OpenGripper  # <--- AJOUT IMPORTANT
 )
 
 
@@ -34,12 +35,17 @@ def create_tree(node: Node):
     # =========================================================================
     # --- PHASE 0 : SÉCURITÉ & ATTENTE ---
     # =========================================================================
-    phase_init_sequence = py_trees.composites.Sequence(name="Phase 0: Seq", memory=False)
+    # CORRECTION : memory=True pour éviter la boucle infinie "Ouverture Pince"
+    phase_init_sequence = py_trees.composites.Sequence(name="Phase 0: Seq", memory=True)
 
     safety_stop = ToggleExploration(name="Safety Stop (Init)", enable=False)
+
+    # AJOUT : On force l'ouverture au démarrage
+    init_open = OpenGripper(name="Init: Ouvrir Pince")
+
     wait_start = WaitForStartSignal(name="Attente GO")
 
-    phase_init_sequence.add_children([safety_stop, wait_start])
+    phase_init_sequence.add_children([safety_stop, init_open, wait_start])
 
     # Protection OneShot pour ne pas refaire l'init si l'arbre redémarre
     phase_init_oneshot = py_trees.decorators.OneShot(
@@ -120,19 +126,36 @@ def create_tree(node: Node):
     # Etape D : Décision Finale (Catch ou Retry)
     decision_selector = py_trees.composites.Selector(name="Validation ou Recul", memory=False)
 
-    # D.1 : Branche OUI (Catch)
+    # D.1 : Branche OUI (Catch + Vérif)
+    # ---------------------------------
     commit_sequence = py_trees.composites.Sequence(name="Branche: OUI", memory=True)
-    # Attention : message WAITING_CATCH pour que le contrôleur sache que c'est la fin
-    ask_confirm = WaitForConfirmation(name="Validation Catch", status_msg="WAITING_CATCH")
+
+    # 1. On demande confirmation pour pincer
+    ask_catch_confirm = WaitForConfirmation(name="Validation Catch", status_msg="WAITING_CATCH")
+    # 2. On pince
     action_catch = CatchObject(name="Action Catch")
-    commit_sequence.add_children([ask_confirm, action_catch])
+    # 3. On vérifie si c'est bon (WAITING_CATCH_VERIFICATION)
+    verify_catch = WaitForConfirmation(name="Vérification Prise", status_msg="WAITING_CATCH_VERIFICATION")
 
-    # D.2 : Branche NON (Recul)
+    # CORRECTION : On ajoute les 3 étapes proprement
+    commit_sequence.add_children([ask_catch_confirm, action_catch, verify_catch])
+
+
+    # D.2 : Branche NON (Recul + Ouverture)
+    # -------------------------------------
     retry_sequence = py_trees.composites.Sequence(name="Branche: NON", memory=True)
-    back_up = BackUp(name="Reculer", duration=2.5, speed=-0.15)
-    force_fail = ForceFailure(name="Restart Loop")
-    retry_sequence.add_children([back_up, force_fail])
 
+    back_up = BackUp(name="Reculer", duration=2.5, speed=-0.15)
+
+    # AJOUT : On ré-ouvre la pince si on a raté
+    re_open = OpenGripper(name="Retry: Ouvrir Pince")
+
+    force_fail = ForceFailure(name="Restart Loop")
+
+    retry_sequence.add_children([back_up, re_open, force_fail])
+
+
+    # -- Assemblage du sélecteur --
     decision_selector.add_children([commit_sequence, retry_sequence])
 
     # -- Assemblage de la séquence de tentative --
@@ -156,6 +179,7 @@ def create_tree(node: Node):
     # ---------------------------------------------------------
     # 3. RETOUR BASE (Skipable)
     # ---------------------------------------------------------
+    # Note : Le robot rentrera toujours après un succès ici.
     home_with_skip = py_trees.composites.Parallel(
         name="Retour ou Skip",
         policy=py_trees.common.ParallelPolicy.SuccessOnOne()
@@ -196,9 +220,7 @@ def main():
         tree.setup(node=node, timeout=15.0)
         print("Superviseur Prêt. Lancez le Mission Controller pour démarrer.")
 
-        # On garde le TickRate à 100ms (10Hz)
         tree.visitors.append(py_trees.visitors.SnapshotVisitor())
-
         tree.tick_tock(period_ms=100)
         rclpy.spin(node)
 

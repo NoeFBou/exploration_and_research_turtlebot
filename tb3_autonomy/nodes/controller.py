@@ -44,6 +44,12 @@ class MissionController(Node):
             self.robot_state = "READY_TO_ALIGN"
         elif msg.data == "WAITING_CATCH" or msg.data == "WAITING_CONFIRMATION":
             self.robot_state = "READY_TO_CATCH"
+
+        # === C'EST ICI QUE LE ROBOT VOUS ATTEND ===
+        elif msg.data == "WAITING_CATCH_VERIFICATION":
+            self.robot_state = "READY_TO_VERIFY"
+        # ==========================================
+
         elif msg.data == "IDLE":
             self.robot_state = "IDLE"
 
@@ -80,7 +86,6 @@ class MissionController(Node):
                 try:
                     choice = int(raw)
                     if choice in self.known_ids:
-                        # On s'assure que le robot est réveillé
                         self.pub_start.publish(Bool(data=True))
                         time.sleep(0.2)
 
@@ -94,7 +99,6 @@ class MissionController(Node):
                 except ValueError:
                     print("Entrée invalide.")
 
-            # Petite pause pour ne pas surcharger le CPU si la boucle tourne à vide
             time.sleep(0.1)
 
     def wait_for_arrival(self):
@@ -115,19 +119,18 @@ class MissionController(Node):
                 print("!"*40)
 
                 while True:
-                    # Question 1
                     q1 = input("Voulez-vous essayer d'attraper cet objet ? (o/n) : ").lower()
                     if q1 in ['n', 'non', 'no']:
                         print(">> ABANDON. Retour au menu.")
                         self.pub_abort.publish(Bool(data=True))
                         self.pub_confirm.publish(Bool(data=False))
                         self.robot_state = "IDLE"
-                        return # Retour au menu
+                        return
                     elif q1 in ['o', 'y', 'oui', 'yes']:
                         print(">> OK, Alignement et Approche en cours...")
-                        self.pub_confirm.publish(Bool(data=True)) # Lance Rotation + Vision
+                        self.pub_confirm.publish(Bool(data=True))
                         self.robot_state = "MOVING"
-                        break # Sort de la question pour revenir à la surveillance
+                        break
                     else:
                         print("Répondez par 'o' ou 'n'.")
 
@@ -137,18 +140,13 @@ class MissionController(Node):
                 print("ROBOT ALIGNÉ ET PROCHE (22cm).")
                 print("!"*40)
 
-                # Question 2 (Boucle d'ajustement)
                 while True:
                     resp = input("Pincer maintenant ? (o/n) : ").lower()
                     if resp in ['o', 'y', 'oui', 'yes']:
                         self.pub_confirm.publish(Bool(data=True))
-                        print(">> Catch envoyé ! Retour base en cours...")
-
-                        # On ne force pas IDLE tout de suite. On attend que le robot
-                        # finisse son "GoToHome" et nous envoie lui-même "IDLE".
+                        print(">> Catch envoyé ! Attente vérification...")
                         self.robot_state = "MOVING"
-                        break # On sort de la question, mais on reste dans wait_for_arrival
-
+                        break
                     elif resp in ['n', 'non', 'no']:
                         self.pub_confirm.publish(Bool(data=False))
                         print(">> Refus. Le robot va reculer et réessayer...")
@@ -157,7 +155,29 @@ class MissionController(Node):
                     else:
                         print("Répondez par 'o' ou 'n'.")
 
-            # 4. CAS C : Retour Menu (Synchronisation)
+            # === 4. CAS C : VÉRIFICATION DU SUCCÈS (C'est ce qui manquait !) ===
+            if self.robot_state == "READY_TO_VERIFY":
+                print("\n" + "?"*40)
+                print("L'OBJET EST-IL ATTRAPÉ CORRECTEMENT ?")
+                print("?"*40)
+
+                while True:
+                    verif = input("Succès ? (o/n) : ").lower()
+                    if verif in ['o', 'y', 'oui', 'yes']:
+                        self.pub_confirm.publish(Bool(data=True))
+                        print(">> SUCCÈS CONFIRMÉ ! Le robot rentre à la base...")
+                        self.robot_state = "MOVING" # Il rentre, on attend IDLE
+                        break
+                    elif verif in ['n', 'non', 'no']:
+                        self.pub_confirm.publish(Bool(data=False))
+                        print(">> ÉCHEC SIGNALÉ. Le robot lâche, recule et réessaie...")
+                        self.robot_state = "MOVING" # Retour à la case départ (Alignement)
+                        break
+                    else:
+                        print("Répondez par 'o' ou 'n'.")
+            # ===================================================================
+
+            # 5. CAS D : Retour Menu
             if self.robot_state == "IDLE":
                 print("\n>>> Retour au menu principal (Robot prêt).")
                 return
@@ -167,8 +187,6 @@ class MissionController(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = MissionController()
-
-    # Thread daemon pour gérer les callbacks ROS en arrière-plan
     spin_thread = threading.Thread(target=rclpy.spin, args=(node,), daemon=True)
     spin_thread.start()
 

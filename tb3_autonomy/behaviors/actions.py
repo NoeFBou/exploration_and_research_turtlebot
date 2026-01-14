@@ -419,3 +419,32 @@ class ForceFailure(py_trees.behaviour.Behaviour):
 
     def update(self):
         return py_trees.common.Status.FAILURE
+
+class OpenGripper(py_trees.behaviour.Behaviour):
+    """
+    Envoie le signal False sur /catch pour ouvrir la pince.
+    """
+    def __init__(self, name="Ouvrir Pince"):
+        super(OpenGripper, self).__init__(name)
+        self.node = None
+        self.pub_catch = None
+        self.start_time = None
+        self.duration = 2.0
+
+    def setup(self, **kwargs):
+        self.node = kwargs.get('node')
+        self.pub_catch = self.node.create_publisher(Bool, '/catch', 10)
+
+    def initialise(self):
+        self.node.get_logger().info("[Action] OUVERTURE PINCE !")
+        msg = Bool()
+        msg.data = False # False = Ouvrir
+        self.pub_catch.publish(msg)
+        self.start_time = self.node.get_clock().now()
+
+    def update(self):
+        now = self.node.get_clock().now()
+        elapsed = (now - self.start_time).nanoseconds / 1e9
+        if elapsed > self.duration:
+            return py_trees.common.Status.SUCCESS
+        return py_trees.common.Status.RUNNING
