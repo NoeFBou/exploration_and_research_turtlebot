@@ -182,7 +182,6 @@ def generate_launch_description():
         navigation_cmd,
         explore_cmd,
         rviz_cmd,
-        # detector_cmd,
         supervisor,
         stereo_proc,
         catch_cmd
