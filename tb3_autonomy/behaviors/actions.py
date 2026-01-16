@@ -180,7 +180,7 @@ class BackUp(py_trees.behaviour.Behaviour):
 # =============================================================================
 
 class WaitDuration(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Timer", duration=60.0):
+    def __init__(self, name="Timer", duration=90.0):
         super(WaitDuration, self).__init__(name)
         self.duration = duration
         self.start_time = None

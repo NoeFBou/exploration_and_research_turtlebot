@@ -140,57 +140,7 @@
       </link>
       <pose>0.726104 -1.1879 0.024684 -7e-06 0.056173 1.5707</pose>
     </model>
-    <model name='CoffeeTable'>
-      <static>1</static>
-      <link name='body'>
-        <pose>0 0 0 0 -0 0</pose>
-        <visual name='visual'>
-          <geometry>
-            <mesh>
-              <uri>https://fuel.ignitionrobotics.org/1.0/openrobotics/models/coffeetable/1/files/meshes/CoffeeTable.obj</uri>
-              <scale>0.00817 0.00817 0.00817</scale>
-            </mesh>
-          </geometry>
-        </visual>
-        <collision name='collision'>
-          <geometry>
-            <mesh>
-              <uri>https://fuel.ignitionrobotics.org/1.0/openrobotics/models/coffeetable/1/files/meshes/CoffeeTable.obj</uri>
-              <scale>0.00817 0.00817 0.00817</scale>
-            </mesh>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <self_collide>0</self_collide>
-        <inertial>
-          <pose>0 0 0 0 -0 0</pose>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-          <mass>1</mass>
-        </inertial>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose>0 0.1 -0.000129 2e-06 -2e-06 -0</pose>
-    </model>
+
     <model name='MiniSofa'>
       <static>1</static>
       <link name='body'>
@@ -242,57 +192,7 @@
       </link>
       <pose>-0.806292 0.032277 -0.000897 -4e-06 -1.2e-05 -3.1415</pose>
     </model>
-    <model name='Chair'>
-      <static>1</static>
-      <link name='body'>
-        <pose>0 0 0 0 -0 1.5708</pose>
-        <visual name='visual'>
-          <geometry>
-            <mesh>
-              <uri>https://fuel.ignitionrobotics.org/1.0/openrobotics/models/chair/2/files/meshes/Chair.obj</uri>
-              <scale>0.00817 0.00817 0.00817</scale>
-            </mesh>
-          </geometry>
-        </visual>
-        <collision name='collision'>
-          <geometry>
-            <mesh>
-              <uri>https://fuel.ignitionrobotics.org/1.0/openrobotics/models/chair/2/files/meshes/Chair.obj</uri>
-              <scale>0.00817 0.00817 0.00817</scale>
-            </mesh>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <self_collide>0</self_collide>
-        <inertial>
-          <pose>0 0 0 0 -0 0</pose>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-          <mass>1</mass>
-        </inertial>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose>1 0.1 0 -4e-06 2e-06 3.1415</pose>
-    </model>
+
     <model name='Bookshelf'>
       <static>1</static>
       <link name='link'>
@@ -1029,11 +929,13 @@
       <pose>2.5 0 1 0 -0 0</pose>
     </model>
     <model name='room_wall_2x5_1'>
+      <static>1</static>
+      <pose>-0.794519 -2.81929 1 0 -0 1.5707</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>0.1 5 2</size>
+              <size>0.1 3.497 2</size>
             </box>
           </geometry>
           <material>
@@ -1047,30 +949,11 @@
         <collision name='collision'>
           <geometry>
             <box>
-              <size>0.1 5 2</size>
+              <size>0.1 3.497 2</size>
             </box>
           </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
         </collision>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
       </link>
-      <static>1</static>
-      <allow_auto_disable>1</allow_auto_disable>
-      <pose>0 -2.45 1 0 -0 1.5707</pose>
     </model>
     <model name='room_wall_2x5_2'>
       <link name='link'>
@@ -1191,145 +1074,127 @@
       <pose>2.45 -1 1 0 -0 0</pose>
     </model>
 
-    <model name='coke_can'>
+
+
+    <model name='room_wall_2x5_clone'>
+      <static>1</static>
+      <pose>-2.49402 -3.72344 1 0 -0 0</pose>
       <link name='link'>
-        <inertial>
-          <pose>0 0 0.06 0 -0 0</pose>
-          <mass>0.39</mass>
-          <inertia>
-            <ixx>0.00055575</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>0.00055575</iyy>
-            <iyz>0</iyz>
-            <izz>0.0001755</izz>
-          </inertia>
-        </inertial>
-        <collision name='collision'>
-          <pose>0.003937 0.004724 -0.18 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://coke_can/meshes/coke_can.dae</uri>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-              </ode>
-              <torsional>
-                <ode/>
-              </torsional>
-            </friction>
-            <contact>
-              <ode>
-                <kp>1e+07</kp>
-                <kd>1</kd>
-                <min_depth>0.001</min_depth>
-                <max_vel>0.1</max_vel>
-              </ode>
-            </contact>
-            <bounce/>
-          </surface>
-          <max_contacts>10</max_contacts>
-        </collision>
-        <visual name='visual'>
-          <pose>0.003937 0.004724 -0.18 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://coke_can/meshes/coke_can.dae</uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose>1.32657 1.52313 -0.002948 -0.063206 -0.009282 -0.000611</pose>
-    </model>
-    <model name='coke_can_0'>
-      <link name='link'>
-        <inertial>
-          <pose>0 0 0.06 0 -0 0</pose>
-          <mass>0.39</mass>
-          <inertia>
-            <ixx>0.00055575</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>0.00055575</iyy>
-            <iyz>0</iyz>
-            <izz>0.0001755</izz>
-          </inertia>
-        </inertial>
-        <collision name='collision'>
-          <pose>0.003937 0.004724 -0.18 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://coke_can/meshes/coke_can.dae</uri>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-              </ode>
-              <torsional>
-                <ode/>
-              </torsional>
-            </friction>
-            <contact>
-              <ode>
-                <kp>1e+07</kp>
-                <kd>1</kd>
-                <min_depth>0.001</min_depth>
-                <max_vel>0.1</max_vel>
-              </ode>
-            </contact>
-            <bounce/>
-          </surface>
-          <max_contacts>10</max_contacts>
-        </collision>
-        <visual name='visual'>
-          <pose>0.003937 0.004724 -0.18 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://coke_can/meshes/coke_can.dae</uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose>2.10597 -1.1393 -0.002896 -0.064083 -0.005727 -0.000584</pose>
-    </model>
-    <model name='unit_box'>
-      <link name='link'>
-        <inertial>
-          <mass>1</mass>
-          <inertia>
-            <ixx>0.166667</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>0.166667</iyy>
-            <iyz>0</iyz>
-            <izz>0.166667</izz>
-          </inertia>
-          <pose>0 0 0 0 -0 0</pose>
-        </inertial>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-        <pose>0 0 0 0 -0 0</pose>
-        <gravity>1</gravity>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>0.139873 0.143387 0.183908</size>
+              <size>0.1 2.513 2</size>
             </box>
           </geometry>
+          <material>
+            <script>
+              <uri>https://fuel.ignitionrobotics.org/1.0/makerspet/models/room_wall_2x5m/1/files/material/script</uri>
+              <uri>https://fuel.ignitionrobotics.org/1.0/makerspet/models/room_wall_2x5m/1/files/material/textures</uri>
+              <name>Custom/room_wall_2x5</name>
+            </script>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <box>
+              <size>0.1 2.513 2</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <model name='room_wall_2x5_0_clone'>
+      <static>1</static>
+      <pose>2.48841 -3.66162 1 0 -0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <box>
+              <size>0.1 2.716 2</size>
+            </box>
+          </geometry>
+          <material>
+            <script>
+              <uri>https://fuel.ignitionrobotics.org/1.0/makerspet/models/room_wall_2x5m/1/files/material/script</uri>
+              <uri>https://fuel.ignitionrobotics.org/1.0/makerspet/models/room_wall_2x5m/1/files/material/textures</uri>
+              <name>Custom/room_wall_2x5</name>
+            </script>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <box>
+              <size>0.1 2.716 2</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <model name='room_wall_2x5_1_clone'>
+      <static>1</static>
+      <pose>0.037335 -4.98379 1 0 -0 1.5707</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry><box><size>0.1 5 2</size></box></geometry>
+          <material>
+            <script>
+              <uri>https://fuel.ignitionrobotics.org/1.0/makerspet/models/room_wall_2x5m/1/files/material/script</uri>
+              <uri>https://fuel.ignitionrobotics.org/1.0/makerspet/models/room_wall_2x5m/1/files/material/textures</uri>
+              <name>Custom/room_wall_2x5</name>
+            </script>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry><box><size>0.1 5 2</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <model name='cabinet_clone'>
+      <static>1</static>
+      <pose>1.99725 -4.59514 0 0 0 -0.671551</pose>
+      <link name='cabinet_bottom_plate'>
+        <visual name='cabinet_bottom_plate_geom_visual'>
+          <pose>0 0 0.01 0 -0 0</pose>
+          <geometry><box><size>0.45 0.45 0.02</size></box></geometry>
+          <material><script><uri>file://media/materials/scripts/gazebo.material</uri><name>Gazebo/Wood</name></script></material>
+        </visual>
+        <collision name='cabinet_bottom_plate_geom'>
+          <pose>0 0 0.01 0 -0 0</pose>
+          <geometry><box><size>0.45 0.45 0.02</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <model name='MiniSofa_clone'>
+      <static>1</static>
+      <pose>0.362533 -4.43812 -0.00089 0 0 3.08953</pose>
+      <link name='body'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>https://fuel.ignitionrobotics.org/1.0/openrobotics/models/minisofa/2/files/meshes/minisofa.obj</uri>
+              <scale>1 1 1</scale>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>https://fuel.ignitionrobotics.org/1.0/openrobotics/models/minisofa/2/files/meshes/minisofa.obj</uri>
+              <scale>1 1 1</scale>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+    <model name='unit_box_clone_0'>
+      <pose>1.51306 1.90247 0.047345 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
           <material>
             <script>
               <name>Gazebo/Red</name>
@@ -1343,95 +1208,18 @@
             <specular>1 0.01 0.01 1</specular>
             <emissive>0.9 0 0 1</emissive>
           </material>
-          <pose>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
         </visual>
         <collision name='collision'>
-          <laser_retro>0</laser_retro>
-          <max_contacts>10</max_contacts>
-          <pose>0 0 0 0 -0 0</pose>
-          <geometry>
-            <box>
-              <size>0.139873 0.143387 0.183908</size>
-            </box>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-                <fdir1>0 0 0</fdir1>
-                <slip1>0</slip1>
-                <slip2>0</slip2>
-              </ode>
-              <torsional>
-                <coefficient>1</coefficient>
-                <patch_radius>0</patch_radius>
-                <surface_radius>0</surface_radius>
-                <use_patch_radius>1</use_patch_radius>
-                <ode>
-                  <slip>0</slip>
-                </ode>
-              </torsional>
-            </friction>
-            <bounce>
-              <restitution_coefficient>0</restitution_coefficient>
-              <threshold>1e+06</threshold>
-            </bounce>
-            <contact>
-              <collide_without_contact>0</collide_without_contact>
-              <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
-              <collide_bitmask>1</collide_bitmask>
-              <ode>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-                <max_vel>0.01</max_vel>
-                <min_depth>0</min_depth>
-              </ode>
-              <bullet>
-                <split_impulse>1</split_impulse>
-                <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-              </bullet>
-            </contact>
-          </surface>
+          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
         </collision>
       </link>
-      <static>0</static>
-      <allow_auto_disable>1</allow_auto_disable>
-      <pose>2.12407 1.4948 0.091954 -2e-06 -3e-06 -2.5e-05</pose>
     </model>
-    <model name='unit_box_0'>
+
+    <model name='unit_box_clone_0_clone'>
+      <pose>-1.90 -3.13 0.047355 0 0 0</pose>
       <link name='link'>
-        <inertial>
-          <mass>1</mass>
-          <inertia>
-            <ixx>0.166667</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>0.166667</iyy>
-            <iyz>0</iyz>
-            <izz>0.166667</izz>
-          </inertia>
-          <pose>0 0 0 0 -0 0</pose>
-        </inertial>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-        <pose>0 0 0 0 -0 0</pose>
-        <gravity>1</gravity>
         <visual name='visual'>
-          <geometry>
-            <box>
-              <size>0.139873 0.143387 0.183908</size>
-            </box>
-          </geometry>
+          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
           <material>
             <script>
               <name>Gazebo/Red</name>
@@ -1445,69 +1233,61 @@
             <specular>1 0.01 0.01 1</specular>
             <emissive>0.9 0 0 1</emissive>
           </material>
-          <pose>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
         </visual>
         <collision name='collision'>
-          <laser_retro>0</laser_retro>
-          <max_contacts>10</max_contacts>
-          <pose>0 0 0 0 -0 0</pose>
-          <geometry>
-            <box>
-              <size>0.139873 0.143387 0.183908</size>
-            </box>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-                <fdir1>0 0 0</fdir1>
-                <slip1>0</slip1>
-                <slip2>0</slip2>
-              </ode>
-              <torsional>
-                <coefficient>1</coefficient>
-                <patch_radius>0</patch_radius>
-                <surface_radius>0</surface_radius>
-                <use_patch_radius>1</use_patch_radius>
-                <ode>
-                  <slip>0</slip>
-                </ode>
-              </torsional>
-            </friction>
-            <bounce>
-              <restitution_coefficient>0</restitution_coefficient>
-              <threshold>1e+06</threshold>
-            </bounce>
-            <contact>
-              <collide_without_contact>0</collide_without_contact>
-              <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
-              <collide_bitmask>1</collide_bitmask>
-              <ode>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-                <max_vel>0.01</max_vel>
-                <min_depth>0</min_depth>
-              </ode>
-              <bullet>
-                <split_impulse>1</split_impulse>
-                <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-              </bullet>
-            </contact>
-          </surface>
+          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
         </collision>
       </link>
-      <static>0</static>
-      <allow_auto_disable>1</allow_auto_disable>
-      <pose>2.06864 -1.00799 0.091954 1e-06 3e-06 -1.5e-05</pose>
+    </model>
+
+    <model name='unit_box_clone_0_clone_clone'>
+      <pose>-0.977703 1.99787 0.047354 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+          <material>
+            <script>
+              <name>Gazebo/Red</name>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+            </script>
+            <shader type='pixel'>
+              <normal_map>__default__</normal_map>
+            </shader>
+            <ambient>1 0.3 0.3 1</ambient>
+            <diffuse>1 0.7 0.7 1</diffuse>
+            <specular>1 0.01 0.01 1</specular>
+            <emissive>0.9 0 0 1</emissive>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <model name='unit_box_clone_0_clone_clone_clone'>
+      <pose>-0.355072 -3.49765 0.047353 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+          <material>
+            <script>
+              <name>Gazebo/Red</name>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+            </script>
+            <shader type='pixel'>
+              <normal_map>__default__</normal_map>
+            </shader>
+            <ambient>1 0.3 0.3 1</ambient>
+            <diffuse>1 0.7 0.7 1</diffuse>
+            <specular>1 0.01 0.01 1</specular>
+            <emissive>0.9 0 0 1</emissive>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+        </collision>
+      </link>
     </model>
   </world>
 </sdf>

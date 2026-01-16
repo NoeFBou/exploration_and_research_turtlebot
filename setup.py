@@ -14,6 +14,8 @@ setup(
         (os.path.join("share", package_name, "launch"), glob("launch/*.launch.py")),
         (os.path.join("share", package_name, "worlds"), glob("worlds/*.sdf")),
         (os.path.join("share", package_name, "urdf"), glob("urdf/*.urdf")),
+        (os.path.join("share", package_name, "urdf"), glob("urdf/*.xacro")),
+
         (os.path.join("share", package_name, "params"), glob("params/*.yaml")),
         (os.path.join("share", package_name, "models"), glob("models/*.pt")),
         (os.path.join("share", package_name, "meshes", "bases"), glob("meshes/bases/*.stl")),

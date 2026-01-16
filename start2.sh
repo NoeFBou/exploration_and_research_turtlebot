@@ -33,3 +33,18 @@ sleep 4
 echo "=== Setting up workspace and launching auto_explore ==="
 source install/setup.bash
 ros2 launch tb3_autonomy auto_explore.launch.py
+
+
+pkill -f ros2
+pkill -f gz
+pkill -f ruby
+pkill -f sim_server
+pkill -f parameter_bridge
+pkill -f rviz2
+pkill -9 gzserver
+pkill -f gzclient
+pkill -f robot_state_publisher
+killall -9 _ros2_daemon 2>/dev/null
+ros2 daemon stop 2>/dev/null
+ros2 daemon start
+ros2 launch tb3_autonomy auto_explore.launch.py
