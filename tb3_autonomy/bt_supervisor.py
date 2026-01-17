@@ -20,7 +20,7 @@ from tb3_autonomy.behaviors.actions import (
     BackUp,
     ForceFailure,
     WaitForAbortSignal,
-    OpenGripper  # <--- AJOUT IMPORTANT
+    OpenGripper, ManualRecovery
 )
 
 
@@ -124,43 +124,51 @@ def create_tree(node: Node):
     vis_approach = VisualServoingApproach(name="Avance Fine")
 
     # Etape D : Décision Finale (Catch ou Retry)
-    decision_selector = py_trees.composites.Selector(name="Validation ou Recul", memory=False)
+    #decision_selector = py_trees.composites.Selector(name="Validation ou Recul", memory=False)
 
     # D.1 : Branche OUI (Catch + Vérif)
     # ---------------------------------
-    commit_sequence = py_trees.composites.Sequence(name="Branche: OUI", memory=True)
+    decision_selector = py_trees.composites.Selector(name="Validation ou Manuel", memory=False)
 
-    # 1. On demande confirmation pour pincer
+    # D.1 : Branche OUI (Automatique)
+    # ---------------------------------
+    commit_sequence = py_trees.composites.Sequence(name="Branche: AUTO", memory=True)
     ask_catch_confirm = WaitForConfirmation(name="Validation Catch", status_msg="WAITING_CATCH")
-    # 2. On pince
     action_catch = CatchObject(name="Action Catch")
-    # 3. On vérifie si c'est bon (WAITING_CATCH_VERIFICATION)
-    verify_catch = WaitForConfirmation(name="Vérification Prise", status_msg="WAITING_CATCH_VERIFICATION")
+    verify_catch = WaitForConfirmation(name="Vérification Prise", status_msg="WAITING_CATCH_VERIFICATION")    # ATTENTION: Il faut retirer 'home_with_skip' d'ici pour le mettre APRÈS la boucle Retry globale
+    # Si on le laisse ici, ça ne marchera pas pour le mode manuel.
+
+    # Réorganisation pour supporter le manuel ET l'auto :
+    # Si Auto réussit -> Success. Si Manuel réussit -> Success.
+    # Si l'un des deux success, on sort du Selector, puis de la Retry Loop.
+
+    commit_sequence.add_children([ask_catch_confirm, action_catch, verify_catch])
 
 
-
-
-    # D.2 : Branche NON (Recul + Ouverture)
+    # D.2 : Branche NON (Mode Manuel)
     # -------------------------------------
-    retry_sequence = py_trees.composites.Sequence(name="Branche: NON", memory=True)
+    # C'est ici qu'on change tout. Plus de recul simple, mais le mode manuel.
+    manual_sequence = py_trees.composites.Sequence(name="Branche: MANUEL", memory=True)
 
-    back_up = BackUp(name="Reculer", duration=2.5, speed=-0.15)
+    start_manual = ManualRecovery(name="Pilotage Manuel")
 
-    # AJOUT : On ré-ouvre la pince si on a raté
-    re_open = OpenGripper(name="Retry: Ouvrir Pince")
+    # Si ManualRecovery renvoie SUCCESS (utilisateur a dit OUI),
+    # alors manual_sequence renvoie SUCCESS.
+    # Alors decision_selector renvoie SUCCESS.
+    # Alors attempt_sequence renvoie SUCCESS.
+    # Alors Retry Loop s'arrête (car c'est un Succès).
+    # Et on pourra aller au Home.
 
-    force_fail = ForceFailure(name="Restart Loop")
-
-    retry_sequence.add_children([back_up, re_open, force_fail])
+    manual_sequence.add_children([start_manual])
 
 
     # -- Assemblage du sélecteur --
-    decision_selector.add_children([commit_sequence, retry_sequence])
+    decision_selector.add_children([commit_sequence, manual_sequence])
 
     # -- Assemblage de la séquence de tentative --
     attempt_sequence.add_children([ask_alignment, rotate_to_target, vis_approach, decision_selector])
 
-    # -- Enveloppe RETRY (Réessaie indéfiniment tant que pas Catch) --
+    # -- Enveloppe RETRY --
     final_approach_loop = py_trees.decorators.Retry(
         child=attempt_sequence,
         name="Boucle Approche/Retry",
@@ -178,29 +186,20 @@ def create_tree(node: Node):
     # ---------------------------------------------------------
     # 3. RETOUR BASE (Skipable)
     # ---------------------------------------------------------
-    # Note : Le robot rentrera toujours après un succès ici.
     home_with_skip = py_trees.composites.Parallel(
         name="Retour ou Skip",
         policy=py_trees.common.ParallelPolicy.SuccessOnOne()
     )
-
     go_home = GoToHome(name="Retour Base", node=node)
-    wait_skip_home = WaitForSkipSignal(name="Skip Retour") # Instance séparée !
-
+    wait_skip_home = WaitForSkipSignal(name="Skip Retour")
     home_with_skip.add_children([go_home, wait_skip_home])
 
 
     # =========================================================================
     # --- ASSEMBLAGE ---
     # =========================================================================
-    commit_sequence.add_children([ask_catch_confirm, action_catch, verify_catch, home_with_skip])
+    phase_fetch.add_children([approach_with_skip, loop_or_abort, home_with_skip])
 
-    #phase_fetch.add_children([approach_with_skip, loop_or_abort, home_with_skip])
-    phase_fetch.add_children([approach_with_skip, loop_or_abort])
-
-    # =========================================================================
-    # --- RACINE ---
-    # =========================================================================
     root.add_children([phase_init_oneshot, phase_explore_oneshot, phase_select, phase_fetch])
 
     return root

@@ -173,7 +173,55 @@ class BackUp(py_trees.behaviour.Behaviour):
         msg.linear.x = self.speed
         self.pub.publish(msg)
         return py_trees.common.Status.RUNNING
+# Dans actions.py
 
+class ManualRecovery(py_trees.behaviour.Behaviour):
+    """
+    Active le mode manuel sur le contrôleur et attend le succès.
+    """
+    def __init__(self, name="Récupération Manuelle"):
+        super(ManualRecovery, self).__init__(name)
+        self.node = None
+        self.pub_status = None
+        self.pub_catch = None
+        self.sub_conf = None
+        self.confirmation = None
+
+    def setup(self, **kwargs):
+        self.node = kwargs.get('node')
+        self.pub_status = self.node.create_publisher(String, '/mission/robot_status', 10)
+        # On a besoin de publier sur catch pour l'ouvrir au début
+        self.pub_catch = self.node.create_publisher(Bool, '/catch', 10)
+        self.sub_conf = self.node.create_subscription(Bool, '/mission/confirmation', self._cb, 10)
+
+    def initialise(self):
+        self.confirmation = None
+
+        # 1. On ouvre la pince par sécurité avant de donner la main
+        self.node.get_logger().info("[Manual] Ouverture pince...")
+        self.pub_catch.publish(Bool(data=False))
+
+        # 2. On signale au controller de passer en mode TELEOP
+        msg = String()
+        msg.data = "MANUAL_RECOVERY"
+        self.pub_status.publish(msg)
+        self.node.get_logger().info("[Manual] En attente de l'opérateur humain...")
+
+    def _cb(self, msg):
+        # Le controller renverra True si l'utilisateur dit "Succès"
+        # Il renverra False si l'utilisateur dit "Abandon"
+        self.confirmation = msg.data
+
+    def update(self):
+        if self.confirmation is None:
+            return py_trees.common.Status.RUNNING
+
+        if self.confirmation:
+            self.node.get_logger().info("[Manual] L'opérateur a confirmé la prise !")
+            return py_trees.common.Status.SUCCESS  # Succès -> On sort de la boucle et on rentre
+        else:
+            self.node.get_logger().info("[Manual] L'opérateur a abandonné.")
+            return py_trees.common.Status.FAILURE
 
 # =============================================================================
 # CLASSES DE LOGIQUE & SIGNAUX

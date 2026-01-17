@@ -1194,7 +1194,7 @@
       <pose>1.51306 1.90247 0.047345 0 0 0</pose>
       <link name='link'>
         <visual name='visual'>
-          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
           <material>
             <script>
               <name>Gazebo/Red</name>
@@ -1210,7 +1210,7 @@
           </material>
         </visual>
         <collision name='collision'>
-          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
         </collision>
       </link>
     </model>
@@ -1219,7 +1219,7 @@
       <pose>-1.90 -3.13 0.047355 0 0 0</pose>
       <link name='link'>
         <visual name='visual'>
-          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
           <material>
             <script>
               <name>Gazebo/Red</name>
@@ -1235,7 +1235,7 @@
           </material>
         </visual>
         <collision name='collision'>
-          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
         </collision>
       </link>
     </model>
@@ -1244,7 +1244,7 @@
       <pose>-0.977703 1.99787 0.047354 0 0 0</pose>
       <link name='link'>
         <visual name='visual'>
-          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
           <material>
             <script>
               <name>Gazebo/Red</name>
@@ -1260,7 +1260,7 @@
           </material>
         </visual>
         <collision name='collision'>
-          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
         </collision>
       </link>
     </model>
@@ -1269,7 +1269,7 @@
       <pose>-0.355072 -3.49765 0.047353 0 0 0</pose>
       <link name='link'>
         <visual name='visual'>
-          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
           <material>
             <script>
               <name>Gazebo/Red</name>
@@ -1285,7 +1285,7 @@
           </material>
         </visual>
         <collision name='collision'>
-          <geometry><box><size>0.05 0.05 0.2</size></box></geometry>
+          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
         </collision>
       </link>
     </model>

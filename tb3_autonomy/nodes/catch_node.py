@@ -41,8 +41,8 @@ class CatchNode(Node):
         self.declare_parameter("sim_open_left", 0.9)
         self.declare_parameter("sim_open_right", -0.9)
 
-        self.declare_parameter("sim_close_left", 0.0)
-        self.declare_parameter("sim_close_right", 0.0)
+        self.declare_parameter("sim_close_left", 0.6)
+        self.declare_parameter("sim_close_right", 0.6)
         self.declare_parameter("sim_motion_time", 0.6)  # seconds
 
         # REAL (compat /servo_command)
