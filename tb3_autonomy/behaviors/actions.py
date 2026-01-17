@@ -83,7 +83,7 @@ class VisualServoingApproach(py_trees.behaviour.Behaviour):
     """
     Approche finale 'manuelle'. Avance tout droit avec correction légère.
     """
-    def __init__(self, name="Visual Servoing"):
+    def __init__(self, name="Visual Servoing", min_dist=0.15):
         super(VisualServoingApproach, self).__init__(name)
         self.blackboard = py_trees.blackboard.Client(name="Action")
         self.blackboard.register_key(key="target_pose_map", access=py_trees.common.Access.READ)
@@ -91,6 +91,8 @@ class VisualServoingApproach(py_trees.behaviour.Behaviour):
         self.cmd_vel_pub = None
         self.tf_buffer = None
         self.tf_listener = None
+        self.target_min_dist = min_dist
+        self.kp_linear = 0.5
 
     def setup(self, **kwargs):
         self.node: Node = kwargs.get('node')
@@ -121,8 +123,8 @@ class VisualServoingApproach(py_trees.behaviour.Behaviour):
         x_dist = target_local.position.x
         y_lat  = target_local.position.y
 
-        # Condition de Succès (22cm)
-        if x_dist <= 0.22:
+        # Condition de target_min_dist
+        if x_dist <= self.target_min_dist:
             self.node.get_logger().info(f"[Visual] Stop final (Dist={x_dist:.2f}m).")
             self.cmd_vel_pub.publish(Twist())
             return py_trees.common.Status.SUCCESS
