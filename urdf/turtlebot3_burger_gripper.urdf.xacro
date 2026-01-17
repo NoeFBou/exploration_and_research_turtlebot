@@ -265,16 +265,31 @@
       </geometry>
       <material name="dark"/>
     </visual>
+
     <collision>
-      <origin rpy="0 0 0" xyz="0.09 0 -0.02"/>
+      <origin rpy="0 0 0" xyz="0.095 0.01 -0.015"/>
       <geometry>
-        <box size="0.02 0.02 0.041"/>
-      </geometry>
+        <box size="0.015 0.015 0.04"/> </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>1000.0</mu>
+            <mu2>1000.0</mu2>
+          </ode>
+        </friction>
+        <contact>
+          <ode>
+            <kp>1000000.0</kp>
+            <kd>1.0</kd>
+            <min_depth>0.001</min_depth>
+          </ode>
+        </contact>
+      </surface>
     </collision>
+
     <inertial>
-        <origin xyz="0.045 0 -0.021"/>
-        <mass value="0.12000000"/>
-        <inertia ixx="23.07e-06" ixy="0.0" ixz="0.0" iyy="107.0e-06" iyz="0.0" izz="96.06e-06"/>
+      <origin xyz="0.045 0 -0.021"/>
+      <mass value="0.01"/> <inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
     </inertial>
   </link>
   <joint name="gripper_left_joint" type="revolute">
@@ -293,16 +308,33 @@
       </geometry>
       <material name="dark"/>
     </visual>
+
     <collision>
-      <origin rpy="0 0 0" xyz="0.09 0 -0.02"/>
+      <origin rpy="0 0 0" xyz="0.095 -0.01 -0.015"/>
       <geometry>
-        <box size="0.02 0.02 0.041"/>
+        <box size="0.015 0.015 0.04"/>
       </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>1000.0</mu>
+            <mu2>1000.0</mu2>
+          </ode>
+        </friction>
+        <contact>
+          <ode>
+            <kp>1000000.0</kp>
+            <kd>1.0</kd>
+            <min_depth>0.001</min_depth>
+          </ode>
+        </contact>
+      </surface>
     </collision>
+
     <inertial>
-        <origin xyz="0.045 0.0 -0.021"/>
-        <mass value="0.12000000"/>
-        <inertia ixx="23.20e-06" ixy="0.0" ixz="0.0" iyy="107.33e-06" iyz="0.0" izz="96.18e-06"/>
+      <origin xyz="0.045 0.0 -0.021"/>
+      <mass value="0.01"/>
+      <inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
     </inertial>
   </link>
   <joint name="gripper_right_joint" type="revolute">
@@ -404,7 +436,6 @@
     </sensor>
   </gazebo>
 
-  <!-- LIDAR 2D (Gazebo Classic = ray/gpu_ray + <ray> ... ) -->
   <gazebo reference="base_scan">
       <sensor name="hls_lfcd_lds" type="ray">
         <always_on>true</always_on>
@@ -439,7 +470,6 @@
       </sensor>
     </gazebo>
 
-  <!-- RGB camera -->
   <gazebo reference="oak_d_pro_camera_gz">
 
     <sensor name="rgb_camera" type="camera">
@@ -466,9 +496,7 @@
 
         <ros>
           <namespace>/</namespace>
-          <!-- => /rgb_camera/image -->
           <remapping>image_raw:=image</remapping>
-          <!-- => /rgb_camera/camera_info -->
           <remapping>camera_info:=camera_info</remapping>
         </ros>
         <camera_name>rgb_camera</camera_name>
@@ -477,7 +505,6 @@
     </sensor>
   </gazebo>
 
-  <!-- Depth camera -->
   <gazebo reference="oak_d_pro_depth_optical_frame">
     <sensor name="depth_camera" type="depth">
           <pose>0 0 0 0 0 0</pose>
@@ -503,9 +530,7 @@
       <plugin name="depth_camera_ros" filename="libgazebo_ros_camera.so">
         <ros>
           <namespace>/</namespace>
-          <!-- => /depth_camera/image -->
           <remapping>image_raw:=image</remapping>
-          <!-- => /depth_camera/camera_info -->
           <remapping>camera_info:=camera_info</remapping>
         </ros>
         <camera_name>depth_camera</camera_name>
@@ -515,7 +540,6 @@
   </gazebo>
 
 
-  <!-- Diff drive (remplace gz-sim-diff-drive-system) -->
   <gazebo>
     <plugin name="tb3_diff_drive" filename="libgazebo_ros_diff_drive.so">
       <ros>
@@ -548,7 +572,6 @@
 
 
 
-  <!-- ros2_control: expose gripper joints -->
   <ros2_control name="GazeboSystem" type="system">
       <hardware>
         <plugin>gazebo_ros2_control/GazeboSystem</plugin>
@@ -577,11 +600,21 @@
       </joint>
     </ros2_control>
 
-  <!-- Gazebo ros2_control plugin -->
   <gazebo>
     <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
       <parameters>$(arg controllers_file)</parameters>
     </plugin>
+  </gazebo>
+  <gazebo reference="caster_back_link">
+    <mu1>0.0</mu1>
+    <mu2>0.0</mu2>
+
+    <kp>1000000.0</kp>
+    <kd>100.0</kd>
+    <minDepth>0.001</minDepth>
+    <maxVel>1.0</maxVel>
+
+    <material>Gazebo/Grey</material>
   </gazebo>
 
 </robot>

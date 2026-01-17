@@ -930,12 +930,12 @@
     </model>
     <model name='room_wall_2x5_1'>
       <static>1</static>
-      <pose>-0.794519 -2.81929 1 0 -0 1.5707</pose>
+      <pose>-0.03 -2.93 1 0 -0 1.5707</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>0.1 3.497 2</size>
+              <size>0.1 1.7 2</size>
             </box>
           </geometry>
           <material>
@@ -949,7 +949,7 @@
         <collision name='collision'>
           <geometry>
             <box>
-              <size>0.1 3.497 2</size>
+              <size>0.1 1.7 2</size>
             </box>
           </geometry>
         </collision>
@@ -1193,8 +1193,20 @@
     <model name='unit_box_clone_0'>
       <pose>1.51306 1.90247 0.047345 0 0 0</pose>
       <link name='link'>
+        <inertial>
+          <mass>0.05</mass>
+          <inertia>
+            <ixx>0.00001</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.00001</iyy>
+            <iyz>0</iyz>
+            <izz>0.00001</izz>
+          </inertia>
+        </inertial>
+
         <visual name='visual'>
-          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
+          <geometry><box><size>0.06 0.06 0.09</size></box></geometry>
           <material>
             <script>
               <name>Gazebo/Red</name>
@@ -1209,17 +1221,42 @@
             <emissive>0.9 0 0 1</emissive>
           </material>
         </visual>
+
         <collision name='collision'>
-          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
+          <geometry><box><size>0.06 0.06 0.09</size></box></geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.1</mu>    <mu2>0.1</mu2>  </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>1000000.0</kp>
+                <kd>1.0</kd>
+                <min_depth>0.001</min_depth>
+              </ode>
+            </contact>
+          </surface>
         </collision>
       </link>
     </model>
-
     <model name='unit_box_clone_0_clone'>
       <pose>-1.90 -3.13 0.047355 0 0 0</pose>
       <link name='link'>
+        <inertial>
+          <mass>0.05</mass>
+          <inertia>
+            <ixx>0.00001</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.00001</iyy>
+            <iyz>0</iyz>
+            <izz>0.00001</izz>
+          </inertia>
+        </inertial>
+
         <visual name='visual'>
-          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
+          <geometry><box><size>0.06 0.06 0.09</size></box></geometry>
           <material>
             <script>
               <name>Gazebo/Red</name>
@@ -1232,10 +1269,23 @@
             <diffuse>1 0.7 0.7 1</diffuse>
             <specular>1 0.01 0.01 1</specular>
             <emissive>0.9 0 0 1</emissive>
-          </material>
-        </visual>
+          </material>        </visual>
+
         <collision name='collision'>
-          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
+          <geometry><box><size>0.06 0.06 0.09</size></box></geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.1</mu>    <mu2>0.1</mu2>  </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>1000000.0</kp>
+                <kd>1.0</kd>
+                <min_depth>0.001</min_depth>
+              </ode>
+            </contact>
+          </surface>
         </collision>
       </link>
     </model>
@@ -1243,8 +1293,20 @@
     <model name='unit_box_clone_0_clone_clone'>
       <pose>-0.977703 1.99787 0.047354 0 0 0</pose>
       <link name='link'>
+        <inertial>
+          <mass>0.05</mass>
+          <inertia>
+            <ixx>0.00001</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.00001</iyy>
+            <iyz>0</iyz>
+            <izz>0.00001</izz>
+          </inertia>
+        </inertial>
+
         <visual name='visual'>
-          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
+          <geometry><box><size>0.06 0.06 0.09</size></box></geometry>
           <material>
             <script>
               <name>Gazebo/Red</name>
@@ -1257,10 +1319,23 @@
             <diffuse>1 0.7 0.7 1</diffuse>
             <specular>1 0.01 0.01 1</specular>
             <emissive>0.9 0 0 1</emissive>
-          </material>
-        </visual>
+          </material>        </visual>
+
         <collision name='collision'>
-          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
+          <geometry><box><size>0.06 0.06 0.09</size></box></geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.1</mu>    <mu2>0.1</mu2>  </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>1000000.0</kp>
+                <kd>1.0</kd>
+                <min_depth>0.001</min_depth>
+              </ode>
+            </contact>
+          </surface>
         </collision>
       </link>
     </model>
@@ -1268,8 +1343,20 @@
     <model name='unit_box_clone_0_clone_clone_clone'>
       <pose>-0.355072 -3.49765 0.047353 0 0 0</pose>
       <link name='link'>
+        <inertial>
+          <mass>0.05</mass>
+          <inertia>
+            <ixx>0.00001</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.00001</iyy>
+            <iyz>0</iyz>
+            <izz>0.00001</izz>
+          </inertia>
+        </inertial>
+
         <visual name='visual'>
-          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
+          <geometry><box><size>0.06 0.06 0.09</size></box></geometry>
           <material>
             <script>
               <name>Gazebo/Red</name>
@@ -1284,8 +1371,22 @@
             <emissive>0.9 0 0 1</emissive>
           </material>
         </visual>
+
         <collision name='collision'>
-          <geometry><box><size>0.03 0.03 0.1</size></box></geometry>
+          <geometry><box><size>0.06 0.06 0.09</size></box></geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.1</mu>    <mu2>0.1</mu2>  </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>1000000.0</kp>
+                <kd>1.0</kd>
+                <min_depth>0.001</min_depth>
+              </ode>
+            </contact>
+          </surface>
         </collision>
       </link>
     </model>

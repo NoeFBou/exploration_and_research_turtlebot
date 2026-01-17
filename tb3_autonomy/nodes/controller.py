@@ -191,19 +191,18 @@ class MissionController(Node):
                 except: pass
             time.sleep(0.1)
 
-
     def wait_for_arrival(self):
         print("Déplacement en cours... [S]=Skip")
 
         while rclpy.ok():
-            # 1. Gestion du SKIP
+            # 1. Gestion du SKIP (toujours actif)
             if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
                 line = sys.stdin.readline().strip()
                 if line.lower() == 's':
                     print("\n>> COMMANDE SKIP ENVOYÉE !")
                     self.pub_skip.publish(Bool(data=True))
 
-            # 2. CAS A : Le robot est arrivé (Nav2) et demande s'il peut s'aligner
+            # 2. CAS A : Robot arrivé, demande alignement
             if self.robot_state == "READY_TO_ALIGN":
                 print("\n" + "!"*40)
                 print("ROBOT ARRIVÉ (Nav2).")
@@ -225,7 +224,7 @@ class MissionController(Node):
                     else:
                         print("Répondez par 'o' ou 'n'.")
 
-            # 3. CAS B : Le robot s'est aligné/approché et demande s'il peut pincer
+            # 3. CAS B : Demande prise (Auto)
             if self.robot_state == "READY_TO_CATCH":
                 print("\n" + "!"*40)
                 print("ROBOT ALIGNÉ ET PROCHE (22cm).")
@@ -240,13 +239,13 @@ class MissionController(Node):
                         break
                     elif resp in ['n', 'non', 'no']:
                         self.pub_confirm.publish(Bool(data=False))
-                        print(">> Refus. Le robot va reculer et réessayer...")
+                        print(">> Refus. Passage en mode manuel probable...")
                         self.robot_state = "MOVING"
                         break
                     else:
                         print("Répondez par 'o' ou 'n'.")
 
-            # === 4. CAS C : VÉRIFICATION DU SUCCÈS (C'est ce qui manquait !) ===
+            # 4. CAS C : Vérification (Après Auto Catch)
             if self.robot_state == "READY_TO_VERIFY":
                 print("\n" + "?"*40)
                 print("L'OBJET EST-IL ATTRAPÉ CORRECTEMENT ?")
@@ -255,30 +254,131 @@ class MissionController(Node):
                 while True:
                     verif = input("Succès ? (o/n) : ").lower()
                     if verif in ['o', 'y', 'oui', 'yes']:
-                        self.pub_confirm.publish(Bool(data=True))
+                        # On insiste un peu pour être sûr que le BT reçoive le message
+                        for _ in range(5):
+                            self.pub_confirm.publish(Bool(data=True))
+                            time.sleep(0.05)
                         print(">> SUCCÈS CONFIRMÉ ! Le robot rentre à la base...")
-                        self.robot_state = "MOVING" # Il rentre, on attend IDLE
+                        self.robot_state = "MOVING"
+                        # On ne return PAS ici, on attend que le robot repasse IDLE
                         break
                     elif verif in ['n', 'non', 'no']:
                         self.pub_confirm.publish(Bool(data=False))
-                        print(">> ÉCHEC SIGNALÉ. Le robot lâche, recule et réessaie...")
-                        self.robot_state = "MOVING" # Retour à la case départ (Alignement)
+                        print(">> ÉCHEC SIGNALÉ. Le robot lâche et réessaie...")
+                        self.robot_state = "MOVING"
                         break
                     else:
                         print("Répondez par 'o' ou 'n'.")
-            # ===================================================================
+
+            # 5. CAS D : Mode Manuel
             if self.robot_state == "MANUAL_MODE":
                 self.run_teleop_session()
-                # Quand on revient ici, soit on a fini (IDLE/MOVING), soit on loop
-                if self.robot_state != "MANUAL_MODE":
-                    return
-            # 5. CAS D : Retour Menu
+                # --- CORRECTION IMPORTANTE ---
+                # On a supprimé le "return" qui était ici.
+                # On continue la boucle while pour écouter ce que le BT veut faire ensuite.
+                # (Par exemple : READY_TO_VERIFY ou IDLE)
+                self.robot_state = "MOVING" # Reset état local pour éviter de relancer teleop en boucle
+
+            # 6. Fin de mission (Le BT est revenu au début)
             if self.robot_state == "IDLE":
-                print("\n>>> Retour au menu principal (Robot prêt).")
+                print("\n>>> Mission terminée. Retour au menu principal.")
                 return
 
             time.sleep(0.1)
-
+# def wait_for_arrival(self):
+#     print("Déplacement en cours... [S]=Skip")
+#
+#     while rclpy.ok():
+#         # 1. Gestion du SKIP (toujours actif)
+#         if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+#             line = sys.stdin.readline().strip()
+#             if line.lower() == 's':
+#                 print("\n>> COMMANDE SKIP ENVOYÉE !")
+#                 self.pub_skip.publish(Bool(data=True))
+#
+#         # 2. CAS A : Robot arrivé, demande alignement
+#         if self.robot_state == "READY_TO_ALIGN":
+#             print("\n" + "!"*40)
+#             print("ROBOT ARRIVÉ (Nav2).")
+#             print("!"*40)
+#
+#             while True:
+#                 q1 = input("Voulez-vous essayer d'attraper cet objet ? (o/n) : ").lower()
+#                 if q1 in ['n', 'non', 'no']:
+#                     print(">> ABANDON. Retour au menu.")
+#                     self.pub_abort.publish(Bool(data=True))
+#                     self.pub_confirm.publish(Bool(data=False))
+#                     self.robot_state = "IDLE"
+#                     return
+#                 elif q1 in ['o', 'y', 'oui', 'yes']:
+#                     print(">> OK, Alignement et Approche en cours...")
+#                     self.pub_confirm.publish(Bool(data=True))
+#                     self.robot_state = "MOVING"
+#                     break
+#                 else:
+#                     print("Répondez par 'o' ou 'n'.")
+#
+#         # 3. CAS B : Demande prise (Auto)
+#         if self.robot_state == "READY_TO_CATCH":
+#             print("\n" + "!"*40)
+#             print("ROBOT ALIGNÉ ET PROCHE (22cm).")
+#             print("!"*40)
+#
+#             while True:
+#                 resp = input("Pincer maintenant ? (o/n) : ").lower()
+#                 if resp in ['o', 'y', 'oui', 'yes']:
+#                     self.pub_confirm.publish(Bool(data=True))
+#                     print(">> Catch envoyé ! Attente vérification...")
+#                     self.robot_state = "MOVING"
+#                     break
+#                 elif resp in ['n', 'non', 'no']:
+#                     self.pub_confirm.publish(Bool(data=False))
+#                     print(">> Refus. Passage en mode manuel probable...")
+#                     self.robot_state = "MOVING"
+#                     break
+#                 else:
+#                     print("Répondez par 'o' ou 'n'.")
+#
+#         # 4. CAS C : Vérification (Après Auto Catch)
+#         if self.robot_state == "READY_TO_VERIFY":
+#             print("\n" + "?"*40)
+#             print("L'OBJET EST-IL ATTRAPÉ CORRECTEMENT ?")
+#             print("?"*40)
+#
+#             while True:
+#                 verif = input("Succès ? (o/n) : ").lower()
+#                 if verif in ['o', 'y', 'oui', 'yes']:
+#                     # On insiste un peu pour être sûr que le BT reçoive le message
+#                     for _ in range(5):
+#                         self.pub_confirm.publish(Bool(data=True))
+#                         time.sleep(0.05)
+#                     print(">> SUCCÈS CONFIRMÉ ! Le robot rentre à la base...")
+#                     self.robot_state = "MOVING"
+#                     # On ne return PAS ici, on attend que le robot repasse IDLE
+#                     break
+#                 elif verif in ['n', 'non', 'no']:
+#                     self.pub_confirm.publish(Bool(data=False))
+#                     print(">> ÉCHEC SIGNALÉ. Le robot lâche et réessaie...")
+#                     self.robot_state = "MOVING"
+#                     break
+#                 else:
+#                     print("Répondez par 'o' ou 'n'.")
+#
+#         # 5. CAS D : Mode Manuel
+#         if self.robot_state == "MANUAL_MODE":
+#             self.run_teleop_session()
+#             # --- CORRECTION IMPORTANTE ---
+#             # On a supprimé le "return" qui était ici.
+#             # On continue la boucle while pour écouter ce que le BT veut faire ensuite.
+#             # (Par exemple : READY_TO_VERIFY ou IDLE)
+#             self.robot_state = "MOVING" # Reset état local pour éviter de relancer teleop en boucle
+#
+#         # 6. Fin de mission (Le BT est revenu au début)
+#         if self.robot_state == "IDLE":
+#             print("\n>>> Mission terminée. Retour au menu principal.")
+#             return
+#
+#         time.sleep(0.1)
 def main(args=None):
     rclpy.init(args=args)
     node = MissionController()
