@@ -77,7 +77,7 @@ def generate_launch_description():
             '-entity', 'my_custom_waffle',
             '-x', '-2.0',
             '-y', '-0.5',
-            '-z', '0.15'
+            '-z', '0.05'
         ],
         output='screen'
     )

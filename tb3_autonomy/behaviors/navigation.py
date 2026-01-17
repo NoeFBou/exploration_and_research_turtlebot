@@ -107,12 +107,10 @@ class GoToHome(py_trees.behaviour.Behaviour):
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose.header.frame_id = "map"
 
-        # === CORRECTION ICI ===
-        # Structure : Message -> PoseStamped (.pose) -> Pose (.pose) -> Position (.position)
-        goal_msg.pose.pose.position.x = 0.0
-        goal_msg.pose.pose.position.y = 0.0
+
+        goal_msg.pose.pose.position.x = -2.0
+        goal_msg.pose.pose.position.y = -0.5
         goal_msg.pose.pose.orientation.w = 1.0
-        # ======================
 
         if not self.action_client.wait_for_server(timeout_sec=2.0):
             self.node.get_logger().error("[Nav] Serveur Nav2 introuvable pour le retour base !")
