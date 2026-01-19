@@ -1341,7 +1341,7 @@
     </model>
 
     <model name='unit_box_clone_0_clone_clone_clone'>
-      <pose>-0.355072 -3.49765 0.047353 0 0 0</pose>
+      <pose>-0.685502 -4.533669 0.044490 0 0 0</pose>
       <link name='link'>
         <inertial>
           <mass>0.05</mass>

@@ -349,9 +349,9 @@
     <visual name="meshes">
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
       <geometry>
-          <mesh filename="package://tb3_autonomy/meshes/sensors/OAK-D-PRO.stl" scale="1.0 1.0 1.0"/>
+          <mesh filename="package://tb3_autonomy/meshes/sensors/OAK-D-PRO.dae" scale="1.0 1.0 1.0"/>
       </geometry>
-      <material name="dark"/>
+      <material name="grey"/>
     </visual>
     <inertial>
     <origin xyz="0.0 0.0 0.0"/>
@@ -477,7 +477,7 @@
 
       <always_on>true</always_on>
       <update_rate>30</update_rate>
-      <visualize>true</visualize>
+      <visualize>false</visualize>
 
       <camera>
         <horizontal_fov>1.047</horizontal_fov>
@@ -511,7 +511,7 @@
 
       <always_on>true</always_on>
       <update_rate>30</update_rate>
-      <visualize>true</visualize>
+      <visualize>false</visualize>
 
       <camera>
         <horizontal_fov>1.047</horizontal_fov>
@@ -616,5 +616,6 @@
 
     <material>Gazebo/Grey</material>
   </gazebo>
+
 
 </robot>

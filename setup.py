@@ -21,6 +21,8 @@ setup(
         (os.path.join("share", package_name, "meshes", "bases"), glob("meshes/bases/*.stl")),
         (os.path.join("share", package_name, "meshes", "wheels"), glob("meshes/wheels/*.stl")),
         (os.path.join("share", package_name, "meshes", "sensors"), glob("meshes/sensors/*.stl")),
+        (os.path.join("share", package_name, "meshes", "sensors"), glob("meshes/sensors/*.dae")),
+        (os.path.join("share", package_name, "meshes", "sensors"), glob("meshes/sensors/*.png")),
         (os.path.join("share", package_name, "meshes", "actuators", "gripper"), glob("meshes/actuators/gripper/*.stl")),
     ],
     install_requires=["setuptools"],

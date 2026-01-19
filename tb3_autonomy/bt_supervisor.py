@@ -18,7 +18,7 @@ from tb3_autonomy.behaviors.actions import (
     WaitForConfirmation,
     WaitForSkipSignal,
     BackUp,
-    ForceFailure,
+    ForceFailure, PublishStatus,
     WaitForAbortSignal,
     OpenGripper, ManualRecovery
 )
@@ -66,7 +66,7 @@ def create_tree(node: Node):
         policy=py_trees.common.ParallelPolicy.SuccessOnOne()
     )
     recorder = ObjectRecorder(name="Scanner 30cm")
-    timer_explore = WaitDuration(name="Timer 90", duration=90.0)
+    timer_explore = WaitDuration(name="Timer 100", duration=100.0)
 
     scan_and_wait.add_children([recorder, timer_explore])
 
@@ -194,11 +194,11 @@ def create_tree(node: Node):
     wait_skip_home = WaitForSkipSignal(name="Skip Retour")
     home_with_skip.add_children([go_home, wait_skip_home])
 
-
+    signal_idle = PublishStatus(name="Signal Fin Mission", status="IDLE")
     # =========================================================================
     # --- ASSEMBLAGE ---
     # =========================================================================
-    phase_fetch.add_children([approach_with_skip, loop_or_abort, home_with_skip])
+    phase_fetch.add_children([approach_with_skip, loop_or_abort, home_with_skip, signal_idle])
 
     root.add_children([phase_init_oneshot, phase_explore_oneshot, phase_select, phase_fetch])
 
