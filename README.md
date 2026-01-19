@@ -116,11 +116,114 @@ source ~/.bashrc
 
 # Workflow de la Simulation :
 ```mermaid
-graph TD;
-    A-->B;
-    A-->C;
-    B-->D;
-    C-->D;
+graph TD
+    %% Noeuds principaux
+    Root(" Mission Supervisor<br/>(Sequence)")
+    
+    %% PHASE 0: INIT
+    P0("Phase 0: Initialisation<br/>[OneShot]")
+    P0_Seq("Séquence Init")
+    Stop1[Safety Stop]
+    Open1[Ouvrir Pince]
+    WaitStart[Attente Signal 'GO']
+
+    %% PHASE 1: EXPLORE
+    P1("Phase 1: Exploration<br/>[OneShot]")
+    P1_Seq("Séquence Explore")
+    AutoExp[Auto Explore ON]
+    ScanPar(" Scanning...<br/>(Parallel)")
+    Recorder[Object Recorder]
+    Timer[Timer 100s]
+
+    %% PHASE 2: SELECT
+    P2("Phase 2: Sélection<br/>(Sequence)")
+    StopExp[Stop Explore]
+    WaitSelect[Attente Choix Utilisateur]
+
+    %% PHASE 3: FETCH
+    P3("Phase 3: Récupération<br/>(Sequence)")
+    
+    %% Sous-partie Navigation
+    NavPar(" Approche ou Skip<br/>(Parallel)")
+    NavSeq("Nav2 Sequence")
+    GoTo[GoTo Detected Target]
+    SkipBtn[Bouton SKIP]
+
+    %% Sous-partie Loop / Abort
+    LoopAbort(" Boucle ou Abort<br/>(Parallel)")
+    AbortBtn[Bouton ABORT]
+    RetryDec(" Retry Loop<br/>[Decorator]")
+    AttemptSeq("Tentative Catch<br/>(Sequence)")
+    
+    %% Actions fines
+    AskAlign{Demande<br/>Alignement?}
+    Rotate[Rotation Visuelle]
+    Advance[Avance Fine]
+    
+    %% Sélecteur Auto/Manuel
+    Selector(" Auto ou Manuel<br/>(Selector)")
+    
+    %% Branche Auto
+    SeqAuto("Branche AUTO<br/>(Sequence)")
+    AskCatch{Confirmer<br/>Catch?}
+    ActionCatch[Fermer Pince]
+    CheckCatch{Vérifier<br/>Prise?}
+    HomeAuto(" Retour Base<br/>(Auto)")
+
+    %% Branche Manuel
+    SeqMan("Branche MANUEL<br/>(Sequence)")
+    ManRec[ Pilotage Manuel]
+    HomeMan(" Retour Base<br/>(Manuel)")
+
+    %% Signal Fin
+    Idle[Signal IDLE]
+
+    %% LIENS
+    Root --> P0
+    Root --> P1
+    Root --> P2
+    Root --> P3
+
+    %% Phase 0
+    P0 --> P0_Seq
+    P0_Seq --> Stop1 --> Open1 --> WaitStart
+
+    %% Phase 1
+    P1 --> P1_Seq
+    P1_Seq --> AutoExp --> ScanPar
+    ScanPar --> Recorder
+    ScanPar --> Timer
+
+    %% Phase 2
+    P2 --> StopExp --> WaitSelect
+
+    %% Phase 3
+    P3 --> NavPar --> LoopAbort --> Idle
+    
+    NavPar --> NavSeq --> GoTo
+    NavPar --> SkipBtn
+
+    LoopAbort --> RetryDec --> AttemptSeq
+    LoopAbort --> AbortBtn
+
+    AttemptSeq --> AskAlign --> Rotate --> Advance --> Selector
+
+    Selector --> SeqAuto
+    Selector --> SeqMan
+
+    SeqAuto --> AskCatch --> ActionCatch --> CheckCatch --> HomeAuto
+    SeqMan --> ManRec --> HomeMan
+
+    %% Styles
+    classDef seq fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef par fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef sel fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px;
+    classDef act fill:#f3e5f5,stroke:#4a148c,stroke-width:1px;
+    
+    class Root,P0_Seq,P1_Seq,P2,P3,NavSeq,AttemptSeq,SeqAuto,SeqMan seq;
+    class ScanPar,NavPar,LoopAbort par;
+    class Selector sel;
+    class Stop1,Open1,WaitStart,AutoExp,Recorder,Timer,StopExp,WaitSelect,GoTo,SkipBtn,AbortBtn,AskAlign,Rotate,Advance,AskCatch,ActionCatch,CheckCatch,ManRec,HomeAuto,HomeMan,Idle act;
 ```
 
 ## Auteurs & Licence
