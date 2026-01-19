@@ -266,60 +266,54 @@ Schéma montre comment l'information circule entre vos nœuds : de la caméra ju
 
 ```mermaid
 graph TD
-  %% --- Noeuds ROS 2 ---
-  subgraph SENSORS[Capteurs & IA]
-    direction TB
-    Cam[OAK-D / Caméra]
-    YOLO[sim_yolo_depth_node]
-  end
+    %% Noeuds ROS 2
+    subgraph SENSORS [Capteurs & IA]
+        Cam(OAK-D / Caméra)
+        YOLO[sim_yolo_depth_node]
+    end
 
-  subgraph BRAIN[Intelligence & Décision]
-    BT[bt_supervisor (Behavior Tree)]
-  end
+    subgraph BRAIN [Intelligence & Décision]
+        BT[bt_supervisor<br/>Behavior Tree]
+    end
 
-  subgraph UI[Interface Humaine]
-    CTRL[mission_controller (Terminal)]
-  end
+    subgraph UI [Interface Humaine]
+        CTRL[mission_controller<br/>Terminal]
+    end
 
-  subgraph ACTUATORS[Actionneurs]
-    Nav2[Nav2 Stack]
-    Catch[catch_node]
-    Base[Base Mobile]
-  end
+    subgraph ACTUATORS [Actionneurs]
+        Nav2[Nav2 Stack]
+        Catch[catch_node]
+        Base[Base Mobile]
+    end
 
-  %% --- Flux de données (Topics) ---
-  Cam -->|/rgb/image_raw| YOLO
-  YOLO -->|/target_object_pose| BT
+    %% Flux de données (Topics)
+    Cam -->|/rgb/image_raw| YOLO
+    YOLO -->|/target_object_pose| BT
+    
+    %% Communication Supervisor <-> Controller
+    BT -->|/mission/robot_status| CTRL
+    BT -->|/supervisor/known_objects| CTRL
+    
+    CTRL -->|/mission/start| BT
+    CTRL -->|/mission/select_target| BT
+    CTRL -->|/mission/confirmation| BT
+    CTRL -->|/mission/abort| BT
+    CTRL -->|/mission/skip_nav| BT
 
-  %% --- Communication Supervisor <-> Controller ---
-  BT -->|/mission/robot_status| CTRL
-  BT -->|/supervisor/known_objects| CTRL
+    %% Actions du Cerveau
+    BT -->|Action Client| Nav2
+    BT -->|/catch| Catch
+    
+    %% Commandes Moteurs (Priorités)
+    Nav2 -->|/cmd_vel| Base
+    BT -->|/cmd_vel| Base
+    CTRL -->|/cmd_vel<br/>Mode Manuel| Base
+    Catch -->|/joint_trajectory| Base
 
-  %% Commandes UI -> BT
-  CTRL -->|/mission/start| BT
-  CTRL -->|/mission/select_target| BT
-  CTRL -->|/mission/confirmation| BT
-  CTRL -->|/mission/abort| BT
-  CTRL -->|/mission/skip_nav| BT
-
-  %% --- Actions du Cerveau ---
-  BT -->|Action Client| Nav2
-  BT -->|/catch| Catch
-
-  %% --- Commandes Moteurs (Priorités / Multiplexer) ---
-  Nav2 -->|/cmd_vel| Base
-  BT -->|/cmd_vel| Base
-  CTRL -.->|/cmd_vel (Mode Manuel)| Base
-  Catch -->|/joint_trajectory| Base
-
-  %% --- Styles ---
-  classDef default fill:#ffffff,stroke:#333,stroke-width:2px;
-  classDef zone fill:#f4f7f6,stroke:#37474f,stroke-width:2px,stroke-dasharray: 5 5;
-
-  class SENSORS,BRAIN,UI,ACTUATORS zone;
-  classDef uiNode fill:#e1f5fe,stroke:#01579b;
-  class CTRL uiNode;
-
+    %% Styles
+    classDef node fill:#eceff1,stroke:#37474f,stroke-width:2px;
+    classDef topic stroke-dasharray: 5 5;
+    class SENSORS,BRAIN,UI,ACTUATORS node;
 ```
 
 # Machine à États du Contrôleur
@@ -327,40 +321,44 @@ Description du fonctionnment de l'interface GUI de controle et comment il réafi
 
 ```mermaid
 stateDiagram-v2
-    [*] --> IDLE : Démarrage
+    [*] --> IDLE: Démarrage
 
     state "IDLE (Menu)" as IDLE
     state "MOVING (En Mission)" as MOVING
     state "MANUAL_MODE (Teleop)" as MANUAL
 
     %% Transitions principales
-    IDLE --> MOVING : Sélection Cible (ID)
-    MOVING --> IDLE : Fin de Mission / Abort
+    IDLE --> MOVING: Sélection Cible (ID)
+    MOVING --> IDLE: Fin de Mission / Abort
 
-    %% Intéractions Robot -> Humain
+    %% Interactions Robot -> Humain
     state "Demandes de Validation" as ASK {
-        state "READY_TO_ALIGN" as ALIGN : Robot Arrivé (Nav2)
-        state "READY_TO_CATCH" as CATCH : Robot Aligné (Vision)
-        state "READY_TO_VERIFY" as VERIF : Objet Saisi ?
-        
+        state "READY_TO_ALIGN" as ALIGN
+        state "READY_TO_CATCH" as CATCH
+        state "READY_TO_VERIFY" as VERIF
+
+        ALIGN: Robot Arrivé (Nav2)
+        CATCH: Robot Aligné (Vision)
+        VERIF: Objet Saisi ?
+
         [*] --> ALIGN
-        ALIGN --> CATCH : Oui
-        CATCH --> VERIF : Oui (Fermer Pince)
+        ALIGN --> CATCH: Oui
+        CATCH --> VERIF: Oui (Fermer Pince)
     }
 
     %% Liens événements
-    MOVING --> ALIGN : msg: WAITING_ALIGNMENT
-    MOVING --> CATCH : msg: WAITING_CATCH
-    MOVING --> VERIF : msg: WAITING_CATCH_VERIFICATION
-    
+    MOVING --> ALIGN: msg "WAITING_ALIGNMENT"
+    MOVING --> CATCH: msg "WAITING_CATCH"
+    MOVING --> VERIF: msg "WAITING_CATCH_VERIFICATION"
+
     %% Réponses Humaines
-    ALIGN --> MOVING : Oui / Non
-    CATCH --> MOVING : Oui / Non
-    VERIF --> MOVING : Succès / Échec
+    ALIGN --> MOVING: Oui / Non
+    CATCH --> MOVING: Oui / Non
+    VERIF --> MOVING: Succès / Échec
 
     %% Mode Manuel (Recovery)
-    MOVING --> MANUAL : msg: MANUAL_RECOVERY
-    MANUAL --> MOVING : Succès (Entrée)
+    MOVING --> MANUAL msg: "MANUAL_RECOVERY"
+    MANUAL --> MOVING: "Succès (Entrée)"
 
     %% Notes
     note right of MANUAL
