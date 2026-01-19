@@ -263,6 +263,7 @@ graph TD
 
 # Architecture des Topics ROS 2 (data flow)
 Schéma montre comment l'information circule entre vos nœuds : de la caméra jusqu'aux moteurs, en passant par le Supervisor et le Controller.
+
 ```mermaid
 graph TD
     %% Noeuds ROS 2
@@ -317,7 +318,8 @@ graph TD
 
 # Machine à États du Contrôleur
 Description du fonctionnment de l'interface GUI de controle et comment il réafit aux messages des comportements/noeuds.
-```Maimaid
+
+```mermaid
 stateDiagram-v2
     [*] --> IDLE : Démarrage
 
@@ -359,7 +361,6 @@ stateDiagram-v2
         Contrôle Clavier :
         Z/S/Q/D + Espace
     end note
-
 ```
 
 ## Auteurs & Licence
