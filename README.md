@@ -266,54 +266,60 @@ Schéma montre comment l'information circule entre vos nœuds : de la caméra ju
 
 ```mermaid
 graph TD
-    %% Noeuds ROS 2
-    subgraph SENSORS [Capteurs & IA]
-        Cam(OAK-D / Caméra)
-        YOLO[sim_yolo_depth_node]
-    end
+  %% --- Noeuds ROS 2 ---
+  subgraph SENSORS[Capteurs & IA]
+    direction TB
+    Cam[OAK-D / Caméra]
+    YOLO[sim_yolo_depth_node]
+  end
 
-    subgraph BRAIN [Intelligence & Décision]
-        BT[bt_supervisor<br/>(Behavior Tree)]
-    end
+  subgraph BRAIN[Intelligence & Décision]
+    BT[bt_supervisor (Behavior Tree)]
+  end
 
-    subgraph UI [Interface Humaine]
-        CTRL[mission_controller<br/>(Terminal)]
-    end
+  subgraph UI[Interface Humaine]
+    CTRL[mission_controller (Terminal)]
+  end
 
-    subgraph ACTUATORS [Actionneurs]
-        Nav2[Nav2 Stack]
-        Catch[catch_node]
-        Base[Base Mobile]
-    end
+  subgraph ACTUATORS[Actionneurs]
+    Nav2[Nav2 Stack]
+    Catch[catch_node]
+    Base[Base Mobile]
+  end
 
-    %% Flux de données (Topics)
-    Cam -->|/rgb/image_raw| YOLO
-    YOLO -->|/target_object_pose| BT
-    
-    %% Communication Supervisor <-> Controller
-    BT -->|/mission/robot_status| CTRL
-    BT -->|/supervisor/known_objects| CTRL
-    
-    CTRL -->|/mission/start| BT
-    CTRL -->|/mission/select_target| BT
-    CTRL -->|/mission/confirmation| BT
-    CTRL -->|/mission/abort| BT
-    CTRL -->|/mission/skip_nav| BT
+  %% --- Flux de données (Topics) ---
+  Cam -->|/rgb/image_raw| YOLO
+  YOLO -->|/target_object_pose| BT
 
-    %% Actions du Cerveau
-    BT -->|Action Client| Nav2
-    BT -->|/catch| Catch
-    
-    %% Commandes Moteurs (Priorités)
-    Nav2 -->|/cmd_vel| Base
-    BT -->|/cmd_vel| Base
-    CTRL -->|/cmd_vel<br/>(Mode Manuel)| Base
-    Catch -->|/joint_trajectory| Base
+  %% --- Communication Supervisor <-> Controller ---
+  BT -->|/mission/robot_status| CTRL
+  BT -->|/supervisor/known_objects| CTRL
 
-    %% Styles
-    classDef node fill:#eceff1,stroke:#37474f,stroke-width:2px;
-    classDef topic stroke-dasharray: 5 5;
-    class SENSORS,BRAIN,UI,ACTUATORS node;
+  %% Commandes UI -> BT
+  CTRL -->|/mission/start| BT
+  CTRL -->|/mission/select_target| BT
+  CTRL -->|/mission/confirmation| BT
+  CTRL -->|/mission/abort| BT
+  CTRL -->|/mission/skip_nav| BT
+
+  %% --- Actions du Cerveau ---
+  BT -->|Action Client| Nav2
+  BT -->|/catch| Catch
+
+  %% --- Commandes Moteurs (Priorités / Multiplexer) ---
+  Nav2 -->|/cmd_vel| Base
+  BT -->|/cmd_vel| Base
+  CTRL -.->|/cmd_vel (Mode Manuel)| Base
+  Catch -->|/joint_trajectory| Base
+
+  %% --- Styles ---
+  classDef default fill:#ffffff,stroke:#333,stroke-width:2px;
+  classDef zone fill:#f4f7f6,stroke:#37474f,stroke-width:2px,stroke-dasharray: 5 5;
+
+  class SENSORS,BRAIN,UI,ACTUATORS zone;
+  classDef uiNode fill:#e1f5fe,stroke:#01579b;
+  class CTRL uiNode;
+
 ```
 
 # Machine à États du Contrôleur
