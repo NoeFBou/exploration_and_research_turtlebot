@@ -28,8 +28,7 @@ https://github.com/user-attachments/assets/cd7010fb-da89-4ccd-af83-5f72bb1777f9
    <video src="./resource/catcho.mp4" controls="controls" style="max-width: 730px;">
 </video>
 </video>
-<video src="./resource/catchm.mp4" controls="controls" muted="muted" style="max-width: 100%;">
-</video>
+[Voir la vidéo de démonstration (catchm)](./resource/catchm.mp4)
    
 Remarque/hypothese de travail
 objet à plus de 70 cm les un des autres dans l'environement (axe d'amélioration) 
