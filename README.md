@@ -3,7 +3,7 @@
 Ce projet permet à un robot TurtleBot3 (Burger) équipé d'une pince robotique et d'une caméra OAK-D-PRO d'explorer une pièce inconnue de manière autonome (SLAM + Explore Lite) tout en analysant les objets rencontrés via la caméra (simulée pour gazebo) et un script de détection IA avec en plus la possibilité de ramasser des objets pour les ramener à la base.
 Le projet combine :
 - SLAM & Exploration (Nav2, SLAM Toolbox, Explore Lite)
-- Vision par Ordinateur (YOLOv8 + Caméra OAK-D-PRO)
+- Vision par Ordinateur (YOLOv11 + Caméra OAK-D-PRO)
 - Intelligence Décisionnelle (Behavior Trees avec py_trees)
 - Human-in-the-loop (Validation humaine et récupération manuelle en cas d'échec via un controleur)
 
