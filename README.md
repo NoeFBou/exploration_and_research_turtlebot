@@ -12,8 +12,7 @@ Ce projet a été réalisé dans le cadre des cours de _Systèmes intelligents a
 ## Fonctionnalités du projet
 1. **Exploration Autonome :** Le robot cartographie l'environnement inconnu et détecte des objets d'intérêt (ex: cubes rouges).
 2. **Détection 3D :** Localisation précise (X, Y, Z) des objets via YOLO et projection Depth-to-Map.
- <video src="./resource/exploration.mp4" controls="controls" style="max-width: 730px;">
-</video>
+https://github.com/user-attachments/assets/cd7010fb-da89-4ccd-af83-5f72bb1777f9
 3. **Interface GUI de controle :** L'utilisateur reçoit la liste des objets trouvés et choisit une cible. Il peut également interrompre et "skip" les étapes
 4. **Navigation Hybride :**
    * **Longue distance :** Utilise Nav2 pour se rendre proche de la cible.
