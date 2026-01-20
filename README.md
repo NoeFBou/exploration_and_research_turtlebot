@@ -17,6 +17,8 @@ https://github.com/user-attachments/assets/cd7010fb-da89-4ccd-af83-5f72bb1777f9
 4. **Navigation Hybride :**
    * **Longue distance :** Utilise Nav2 pour se rendre proche de la cible.
    * **Courte distance :** Bascule sur une approche automatique(par cmd) basé sur la vision de la caméra pour l'approche finale vers l'objet cible(prototype en test).
+https://github.com/user-attachments/assets/d19c5913-3cb8-4dc5-a7b7-ac0b6a4e0e43
+https://github.com/user-attachments/assets/acd22277-8a58-4a46-b2c4-e4a67ca533f9
 <video src="./resource/nav1.mp4" controls="controls" style="max-width: 730px;">
 </video>
    <video src="./resource/skip.mp4" controls="controls" style="max-width: 730px;">
@@ -24,12 +26,10 @@ https://github.com/user-attachments/assets/cd7010fb-da89-4ccd-af83-5f72bb1777f9
 6. **Manipulation :**
    * **Gestion de la pince (Simulée/Réelle)**.
    * **Mode "Recovery" Manuel :** Si l'approche échoue, l'utilisateur peut prendre le contrôle au clavier (pas-à-pas) pour ajuster la prise.
-</video>
-   <video src="./resource/catcho.mp4" controls="controls" style="max-width: 730px;">
-</video>
-</video>
-[Voir la vidéo de démonstration (catchm)](./resource/catchm.mp4)
-   
+https://github.com/user-attachments/assets/3098c465-e691-4f68-bacb-dab1a08d26dd
+https://github.com/user-attachments/assets/f659a68e-5e9a-4eda-bf96-bd53514d5c6f
+
+
 Remarque/hypothese de travail
 objet à plus de 70 cm les un des autres dans l'environement (axe d'amélioration) 
 faux positif possibles(axe d'amelioration sur le modele ia/algorythme de data association/ajout d'un comportement pour vérifier la présence réel des objets en ammonts)
