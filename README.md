@@ -12,15 +12,26 @@ Ce projet a été réalisé dans le cadre des cours de _Systèmes intelligents a
 ## Fonctionnalités du projet
 1. **Exploration Autonome :** Le robot cartographie l'environnement inconnu et détecte des objets d'intérêt (ex: cubes rouges).
 2. **Détection 3D :** Localisation précise (X, Y, Z) des objets via YOLO et projection Depth-to-Map.
+ <video src="./resource/exploration.mp4" controls="controls" style="max-width: 730px;">
+</video>
 3. **Interface GUI de controle :** L'utilisateur reçoit la liste des objets trouvés et choisit une cible. Il peut également interrompre et "skip" les étapes
 4. **Navigation Hybride :**
    * **Longue distance :** Utilise Nav2 pour se rendre proche de la cible.
    * **Courte distance :** Bascule sur une approche automatique(par cmd) basé sur la vision de la caméra pour l'approche finale vers l'objet cible(prototype en test).
-5. **Manipulation :**
+<video src="./resource/nav1.mp4" controls="controls" style="max-width: 730px;">
+</video>
+   <video src="./resource/skip.mp4" controls="controls" style="max-width: 730px;">
+</video>
+6. **Manipulation :**
    * **Gestion de la pince (Simulée/Réelle)**.
    * **Mode "Recovery" Manuel :** Si l'approche échoue, l'utilisateur peut prendre le contrôle au clavier (pas-à-pas) pour ajuster la prise.
-
-
+</video>
+   <video src="./resource/catcho.mp4" controls="controls" style="max-width: 730px;">
+</video>
+</video>
+   <video src="./resource/catchm.mp4" controls="controls" style="max-width: 730px;">
+</video>
+   
 Remarque/hypothese de travail
 objet à plus de 70 cm les un des autres dans l'environement (axe d'amélioration) 
 faux positif possibles(axe d'amelioration sur le modele ia/algorythme de data association/ajout d'un comportement pour vérifier la présence réel des objets en ammonts)
