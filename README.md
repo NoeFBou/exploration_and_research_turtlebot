@@ -12,21 +12,24 @@ Ce projet a été réalisé dans le cadre des cours de _Systèmes intelligents a
 ## Fonctionnalités du projet
 1. **Exploration Autonome :** Le robot cartographie l'environnement inconnu et détecte des objets d'intérêt (ex: cubes rouges).
 2. **Détection 3D :** Localisation précise (X, Y, Z) des objets via YOLO et projection Depth-to-Map.
+
 https://github.com/user-attachments/assets/cd7010fb-da89-4ccd-af83-5f72bb1777f9
+
 3. **Interface GUI de controle :** L'utilisateur reçoit la liste des objets trouvés et choisit une cible. Il peut également interrompre et "skip" les étapes
 4. **Navigation Hybride :**
    * **Longue distance :** Utilise Nav2 pour se rendre proche de la cible.
    * **Courte distance :** Bascule sur une approche automatique(par cmd) basé sur la vision de la caméra pour l'approche finale vers l'objet cible(prototype en test).
+
 https://github.com/user-attachments/assets/d19c5913-3cb8-4dc5-a7b7-ac0b6a4e0e43
+
 https://github.com/user-attachments/assets/acd22277-8a58-4a46-b2c4-e4a67ca533f9
-<video src="./resource/nav1.mp4" controls="controls" style="max-width: 730px;">
-</video>
-   <video src="./resource/skip.mp4" controls="controls" style="max-width: 730px;">
-</video>
+
 6. **Manipulation :**
    * **Gestion de la pince (Simulée/Réelle)**.
    * **Mode "Recovery" Manuel :** Si l'approche échoue, l'utilisateur peut prendre le contrôle au clavier (pas-à-pas) pour ajuster la prise.
+
 https://github.com/user-attachments/assets/3098c465-e691-4f68-bacb-dab1a08d26dd
+
 https://github.com/user-attachments/assets/f659a68e-5e9a-4eda-bf96-bd53514d5c6f
 
 
