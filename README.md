@@ -170,9 +170,6 @@ echo 'export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/opt/ros/humble/share/turtlebo
 source ~/.bashrc
 ```
 
-# Workflow de la Simulation :
-
-
 # Architecture de l'Arbre de Comportement (Mission_Supervisor)
 L'arbre est conçu comme une Séquence Globale divisée en 4 phases distinctes(dont 2 executé en one shot).
 ## Description des Phases
@@ -205,18 +202,44 @@ L'arbre est conçu comme une Séquence Globale divisée en 4 phases distinctes(d
             Fin de Mission
    3. Signal IDLE : Une fois la mission terminée (ou abandonnée via Abort), ce nœud envoie le signal "IDLE" pour réinitialiser le menu du contrôleur.
 
+# Vision & IA
+Le système utilise deux nœuds distincts selon le mode d'utilisation (Simulation ou Réel)
+### A. Simulation (`sim_yolo_depth_node`)
 
-## Structure du Répertoire (
+Utilisé par défaut dans Gazebo.
+
+* **Entrée :** Topics Gazebo `/oakd/rgb/image_raw` et `/oakd/depth/image_raw`.
+* **Traitement :** Inférence YOLOv11 exécutée sur le GPU/CPU du PC hôte.
+* **Profondeur :** Calcul médian dans la Bounding Box alignée.
+
+### B. Robot Réel (`oak_yolo_depth_node`)
+
+Utilisé avec la caméra physique OAK-D Pro.
+
+* **Entrée :** Flux direct depuis la caméra via l'API DepthAI.
+* **Traitement :** Inférence exécutée **sur le VPU de la caméra** (Myriad X) pour ne pas charger le Raspberry Pi du robot.
+* **Profondeur :** Stéréo-vision passive alignée sur le RGB.
+
+### Fine Tuning de l'IA
+
+Un notebook jupyter de fine-tuning(`train_redcube`) est inclus dans le répertoire `tb3_autonomy/ai_fine_tuning/`. Il permet d'adapter le modèle YOLOv11 pré-entraîné sur des images spécifiques à l'environnement de simulation ou réel, améliorant ainsi la précision de la détection des objets cibles (cubes rouges). Le script utilise des images annotées pour affiner les poids du modèle.
+
+
+# Structure du Répertoire
 ```text
-tb3_autonomy/
-├── behaviors/      # Comportements py_trees (actions, vision, nav)
-├── launch/         # Fichiers de lancement
-├── nodes/          # Noeuds ROS 2 (Controller, Vision, Catch)
-├── params/         # Configuration Nav2 et Controlleurs
-└── urdf/           # Modèle du robot (Xacro)
+exploration_and_research_turtlebot
+├───launch # Fichiers de lancement
+├───meshes # mesh du turtlebot
+├───params # parametre de nav2 et de ros2 controllers
+├───tb3_autonomy
+│   ├───ai_fine_tuning # script de fine tuning de l'IA et images annotées
+│   ├───behaviors # Comportements py_trees (actions, vision, nav)
+│   └───nodes #Noeuds ROS 2 (Controller, Vision, Catch)
+├───urdf # Modèle du robot (Xacro)
+└───worlds #Monde de la simulation         
 ```
 
-## Diagramme Visuel de l'arbre de comportement
+# Diagramme Visuel de l'arbre de comportement
 
 ```mermaid
 graph TD
@@ -311,7 +334,7 @@ graph TD
     class Stop1,Open1,WaitStart,AutoExp,Recorder,Timer,StopExp,WaitSelect,GoTo,SkipBtn,AbortBtn,AskAlign,Rotate,Advance,AskCatch,ActionCatch,CheckCatch,ManRec,HomeAuto,HomeMan,Idle act;
 ```
 
-## Architecture des Topics ROS 2 (data flow)
+# Architecture des Topics ROS 2 (data flow)
 Schéma montre comment l'information circule entre vos nœuds : de la caméra jusqu'aux moteurs, en passant par le Supervisor et le Controller.
 
 ```mermaid
@@ -363,7 +386,7 @@ graph TD
     class Cam,YOLO,BT,CTRL,Nav2,Catch,Base item;
 ```
 
-## Machine à États du Contrôleur
+# Machine à États du Contrôleur
 Description du fonctionnment de l'interface GUI de controle et comment il réagit aux messages des comportements/noeuds.
 
 ```mermaid
