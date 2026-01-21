@@ -131,8 +131,6 @@ echo 'export LIBGL_ALWAYS_SOFTWARE=1' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-
-
 ## Lancement
 Terminal 1 : Execute le launch file qui lance Gazebo, Nav2, le nœud de Vision et le Superviseur (Behavior Tree)
 ```bash
@@ -154,9 +152,19 @@ source install/setup.bash
 ros2 run tb3_autonomy mission_controller
 ```
 
-## Dépannage TODO
+## Dépannage
+Pour voir les objets détectés par le robot, il faut activer sur Rviz, le topic:
+```
+/supervisor/known_objects
+```
 
-Robot invisible
+La fenêtre de vision et le noeud IA ne se lance pas : 
+Verfier que vous avze bien executer le launch file depuis ~/ros2_ws
+
+
+
+Robot invisible : 
+
 ```bash
 echo 'export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/opt/ros/humble/share/turtlebot3_gazebo/models' >> ~/.bashrc
 source ~/.bashrc
