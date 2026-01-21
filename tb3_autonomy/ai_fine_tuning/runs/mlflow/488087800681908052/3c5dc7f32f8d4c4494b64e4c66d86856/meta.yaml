@@ -1,0 +1,14 @@
+artifact_uri: /home/nathan/Documents/GitHub/exploration_and_research_turtlebot/tb3_autonomy/ai_fine_tuning/runs/mlflow/488087800681908052/3c5dc7f32f8d4c4494b64e4c66d86856/artifacts
+end_time: 1769027993115
+entry_point_name: ''
+experiment_id: '488087800681908052'
+lifecycle_stage: active
+run_id: 3c5dc7f32f8d4c4494b64e4c66d86856
+run_name: red_cube_02
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1769027961786
+status: 3
+tags: []
+user_id: nathan

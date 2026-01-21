@@ -2,3 +2,4 @@ numpy==1.26.4
 py_trees==2.4.0
 ultralytics==8.4.6
 yolo==0.3.2
+depthai==2.28

@@ -186,7 +186,7 @@ L'arbre est conçu comme une Séquence Globale divisée en 4 phases distinctes(d
       cette branche est divisée en trois sous-étapes :
    1. Approche Longue Distance (Nav2) : 
       * Le robot utilise la stack de navigation ROS 2 pour se rendre près de l'objet.
-      * Interruption (Skip) : Cette action est placée dans un nœud Parallel. Si l'utilisateur appuie sur "S" (Skip), la navigation est annulée et l'arbre passe à l'étape suivante. Utile on s'est trompé ou qu'on souhaite changer de cible ou si le robot est bloqué.
+      * Interruption (Skip) : Cette action est placée dans un nœud Parallel. Si l'utilisateur appuie sur "S" (Skip), la navigation est annulée et l'arbre passe à l'étape suivante. Utile si on s'est trompé ou qu'on souhaite changer de cible ou si le robot est bloqué.
    2. Boucle de Tentative d'attrapage/de catch de l'objet (Retry Loop) :
       * Demande Alignement : Le robot attend votre confirmation que c'est le bon objet à attraper pour commencer une maneuvre d'alignement.
       * Rotation "Visuelle" : S'aligne face à l'objet(mathématiquement).
