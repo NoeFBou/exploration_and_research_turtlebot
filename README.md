@@ -347,7 +347,8 @@ graph TD
     Catch -->|/joint_trajectory| Base
 
     %% Styles
-    classDef node fill:#eceff1,stroke:#37474f,stroke-width:2px;
+    %% Ajout de color:#000 pour que le titre des subgraphs reste noir
+    classDef node fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#000;
     classDef topic stroke-dasharray: 5 5;
     class SENSORS,BRAIN,UI,ACTUATORS node;
 ```
