@@ -285,10 +285,11 @@ graph TD
     SeqMan --> ManRec --> HomeMan
 
     %% Styles
-    classDef seq fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef par fill:#fff3e0,stroke:#e65100,stroke-width:2px;
-    classDef sel fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px;
-    classDef act fill:#f3e5f5,stroke:#4a148c,stroke-width:1px;
+    %% AJOUT DE color:#000 pour forcer le texte noir en mode Dark
+    classDef seq fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000;
+    classDef par fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000;
+    classDef sel fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px,color:#000;
+    classDef act fill:#f3e5f5,stroke:#4a148c,stroke-width:1px,color:#000;
     
     class Root,P0_Seq,P1_Seq,P2,P3,NavSeq,AttemptSeq,SeqAuto,SeqMan seq;
     class ScanPar,NavPar,LoopAbort par;
