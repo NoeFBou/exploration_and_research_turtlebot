@@ -52,16 +52,20 @@ _note : les vidéos sont disponibles dans le dossier ressource du répo_
 
 * ## Installation
 
-### 1. Installer ROS 2 Humble
-Si ROS 2 n'est pas encore installé, ouvrez un terminal et exécutez les commandes suivantes :
+### 1. Installer ROS 2
 
-**Configuration de la locale supportant l'UTF-8 :**
+> **Note :** Le projet nécessite ROS 2 Humble Hawksbill.
+> Si votre distribution Ubuntu est différente, veuillez consulter la [page officielle d'installation de ROS 2](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html) pour les instructions spécifiques à votre version.
+
+
+Configurer la Locale qui supporte l'UTF-8
 ```bash
 sudo apt update && sudo apt install locales
 sudo locale-gen en_US en_US.UTF-8
 sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 export LANG=en_US.UTF-8
 ```
+Ajout des sources ros2
 
 **Ajout des sources ROS 2 :**
 ```bash
@@ -72,7 +76,7 @@ sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 ```
 
-**Installation de ROS 2 :**
+Installation de ros2
 ```bash
 sudo apt update
 sudo apt upgrade
@@ -86,23 +90,30 @@ echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### 2. Installer les dépendances de notre projet
+
+### 2. Installer les paquets du projet
 ```bash
 sudo apt update
 sudo apt install ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox -y
 sudo apt install ros-humble-turtlebot3 ros-humble-turtlebot3-gazebo -y
 sudo apt install python3-pip python3-opencv ros-humble-cv-bridge ros-humble-vision-opencv -y
 sudo apt install ros-humble-stereo-image-proc -y
+sudo apt install ros-humble-py-trees -y
+sudo apt install ros-humble-py-trees-ros -y
+sudo apt install ros-humble-py-trees-ros-interfaces -y
+sudo apt install ros-humble-py-trees-ros-viewer -y
+
+
 mkdir -p ~/ros2_ws/src
 cd ~/ros2_ws/src
 git clone https://github.com/robo-friends/m-explore-ros2.git
 cd ~/ros2_ws/
 ```
 
-### 4. Clonage et Compilation
+### 3. Clonage et Compilation
 ```bash
 cd ~/ros2_ws/src
-git clone [https://github.com/NoeFBou/exploration_and_research_turtlebot.git](https://github.com/NoeFBou/exploration_and_research_turtlebot.git)
+git clone https://github.com/NoeFBou/exploration_and_research_turtlebot.git
 cd ~/ros2_ws
 sudo rosdep init
 rosdep update
@@ -111,7 +122,7 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-### 3. Configuration de l'environnement à adapter selon votre config(gpu disponible ou non)
+### 4. Configuration de l'environnement à adapter selon votre config(gpu disponible ou non)
 ```bash
 echo 'export LDS_MODEL=LDS-01' >> ~/.bashrc
 echo 'export LIBGL_ALWAYS_SOFTWARE=1' >> ~/.bashrc
@@ -126,6 +137,11 @@ Terminal 1 : Execute le launch file qui lance Gazebo, Nav2, le nœud de Vision e
 cd ~/ros2_ws
 source install/setup.bash
 ros2 launch tb3_autonomy auto_explore.launch.py
+```
+Ou
+```bash
+cd ~/ros2_ws/src/exploration_and_research_turtlebot/
+./launch.sh
 ```
 *Attendez que "Nav2" soit prêt et que le message "Superviseur Prêt" apparaisse.*
 

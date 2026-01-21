@@ -1,12 +1,4 @@
-# Dépendances pour DepthAI (OAK-D)
-depthai==2.24.0
-blobconverter==1.4.2
-
-# Dépendances pour traitement d'images
-opencv-python>=4.5.0
-numpy>=1.21.0
-
-# Optionnel : pour conversion de modèles personnalisés
-torch>=2.0.0
-torchvision>=0.15.0
-onnx>=1.14.0
+numpy==1.26.4
+py_trees==2.4.0
+ultralytics==8.4.6
+yolo==0.3.2
