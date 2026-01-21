@@ -1,13 +1,14 @@
-# Projet TurtleBot3 d'exploration, de recherhce IA et de récupération d'objet
+# Projet TurtleBot3 d'exploration, de recherche IA et de récupération d'objet
 
-Ce projet permet à un robot TurtleBot3 (Burger) équipé d'une pince robotique et d'une caméra OAK-D-PRO d'explorer une pièce inconnue de manière autonome (SLAM + Explore Lite) tout en analysant les objets rencontrés via la caméra (simulée pour gazebo) et un script de détection IA avec en plus la possibilité de ramasser des objets pour les ramener à la base.
+Ce projet permet à un robot TurtleBot3 (Burger) équipé d'une pince robotique et d'une caméra OAK-D-PRO d'explorer une pièce inconnue de manière autonome (SLAM + Explore Lite) tout en analysant les objets rencontrés via la caméra (simulée sous Gazebo) et un noeud d'inférence. Il offre de plus la possibilité de ramasser des objets pour les ramener à la base.
+
 Le projet combine :
 - SLAM & Exploration (Nav2, SLAM Toolbox, Explore Lite)
 - Vision par Ordinateur (YOLOv11 + Caméra OAK-D-PRO)
 - Intelligence Décisionnelle (Behavior Trees avec py_trees)
 - Human-in-the-loop (Validation humaine et récupération manuelle en cas d'échec via un controleur)
 
-Ce projet a été réalisé dans le cadre des cours de _Systèmes intelligents autonomes_ et d'_Edge Computing et IA embarquée_ pour les étudiants de mineurs IOT CPS et d'IA du Master 2 informatique de Nice
+Ce projet a été réalisé dans le cadre des cours de _Systèmes intelligents autonomes_ et d'_Edge Computing et IA embarquée_ pour les étudiants de la mineure IoT CPS et d'IA du Master 2 Informatique de Nice.
 
 ## Fonctionnalités du projet
 1. **Exploration Autonome :** Le robot cartographie l'environnement inconnu et détecte des objets d'intérêt (ex: cubes rouges).
@@ -15,10 +16,10 @@ Ce projet a été réalisé dans le cadre des cours de _Systèmes intelligents a
 
 https://github.com/user-attachments/assets/cd7010fb-da89-4ccd-af83-5f72bb1777f9
 
-3. **Interface GUI de controle :** L'utilisateur reçoit la liste des objets trouvés et choisit une cible. Il peut également interrompre et "skip" les étapes
+3. **Interface GUI de controle :** L'utilisateur reçoit la liste des objets trouvés et choisit une cible. Il peut également interrompre et "skip" les étapes.
 4. **Navigation Hybride :**
    * **Longue distance :** Utilise Nav2 pour se rendre proche de la cible.
-   * **Courte distance :** Bascule sur une approche automatique(par cmd) basé sur la vision de la caméra pour l'approche finale vers l'objet cible(prototype en test).
+   * **Courte distance :** Bascule sur une approche automatique(par cmd) basé sur la vision de la caméra pour l'approche finale vers l'objet cible (alignment et approche mathématique, il manque encore un feedback de la caméra).
 
 https://github.com/user-attachments/assets/d19c5913-3cb8-4dc5-a7b7-ac0b6a4e0e43
 
@@ -32,12 +33,14 @@ https://github.com/user-attachments/assets/3098c465-e691-4f68-bacb-dab1a08d26dd
 
 https://github.com/user-attachments/assets/f659a68e-5e9a-4eda-bf96-bd53514d5c6f
 
+_note : les vidéos sont disponibles dans le dossier ressource du répo_ 
 
-Remarque/hypothese de travail
-objet à plus de 70 cm les un des autres dans l'environement (axe d'amélioration) 
-faux positif possibles(axe d'amelioration sur le modele ia/algorythme de data association/ajout d'un comportement pour vérifier la présence réel des objets en ammonts)
-les objets sont détectés que pendant la phase d'exploration, l'environeemnt reste fixe
-approche et attrapage automatique à améliorer(taux d'erreur élevé)
+### Remarques et Hypothèses de travail
+* Disposition : Les objets doivent être espacés d'au moins 70 cm les uns des autres dans l'environnement (axe d'amélioration).
+* Faux positifs : Possibilité de fausses détections (axes d'amélioration : affiner le modèle IA, améliorer l'algorithme de data association ou ajouter un comportement de vérification de la présence réelle de l'objet en amont).
+* Staticité : Les objets ne sont détectés que pendant la phase d'exploration ; l'environnement est supposé fixe ensuite.
+* Saisie : L'approche et la saisie automatique sont des prototypes (taux d'erreur un peu élevé). Il peut y voir des problèmes au retour à la base si nav2 descide d'effectuer une marche arrière. 
+
 
 ## Prérequis Système
 
@@ -50,16 +53,17 @@ approche et attrapage automatique à améliorer(taux d'erreur élevé)
 * ## Installation
 
 ### 1. Installer ROS 2 Humble
-Si ROS 2 n'est pas encore installé, ouvrez un terminal et exécutez :
+Si ROS 2 n'est pas encore installé, ouvrez un terminal et exécutez les commandes suivantes :
 
-configurer la locale qui supporte l'UTF-8
+**Configuration de la locale supportant l'UTF-8 :**
 ```bash
 sudo apt update && sudo apt install locales
 sudo locale-gen en_US en_US.UTF-8
 sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 export LANG=en_US.UTF-8
 ```
-ajout des sources ros2
+
+**Ajout des sources ROS 2 :**
 ```bash
 sudo apt install software-properties-common
 sudo add-apt-repository universe
@@ -68,7 +72,7 @@ sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 ```
 
-installation de ros2
+**Installation de ROS 2 :**
 ```bash
 sudo apt update
 sudo apt upgrade
@@ -76,20 +80,13 @@ sudo apt install ros-humble-desktop
 sudo apt install ros-dev-tools
 ```
 
-Sourcing automatique
+**Sourcing automatique si besoin :**
 ```bash
 echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-installation les paquets de notre projet
-
-
-
-
-
-
-### 2. Installer les paquets du projet
+### 2. Installer les dépendances de notre projet
 ```bash
 sudo apt update
 sudo apt install ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox -y
@@ -124,8 +121,7 @@ source ~/.bashrc
 
 
 ## Lancement
-
-1er terminal pour lancer le launcher qui lance gazebo, Nav2, le nœud de Vision et le Superviseur (Behavior Tree)
+Terminal 1 : Execute le launch file qui lance Gazebo, Nav2, le nœud de Vision et le Superviseur (Behavior Tree)
 ```bash
 cd ~/ros2_ws
 source install/setup.bash
@@ -133,7 +129,7 @@ ros2 launch tb3_autonomy auto_explore.launch.py
 ```
 *Attendez que "Nav2" soit prêt et que le message "Superviseur Prêt" apparaisse.*
 
-2eme terminal pour activer l'interface GUI de controle(le 1er terminale peut etre envoyé en arriere, il ne sert plus sauf pour du debugage/dev)
+Terminal 2 : Lancer l'interface GUI de contrôle (Le premier terminal peut être laissé en arrière-plan, il ne sert plus qu'au débogage)
 ```bash
 cd ~/ros2_ws
 source install/setup.bash
@@ -405,5 +401,5 @@ stateDiagram-v2
 ```
 
 ## Auteurs & Licence
-Projet réalisé par **Nono**.
+Projet réalisé par **Noé**, **Nathan**, **Louis**.
 Licence : Apache 2.0 / MIT (À définir).
