@@ -47,6 +47,7 @@ _note : les vidéos sont disponibles dans le dossier ressource du répo_
 * **OS :** Ubuntu 22.04 LTS (Jammy Jellyfish)
 * **Simulateur :** Gazebo Classic 11
 * **ROS Version :** ROS 2 Humble Hawksbill
+* **Python Version :** Python 3.10 ou supérieure
 
 ---
 
@@ -113,6 +114,8 @@ cd ~/ros2_ws/
 ```bash
 cd ~/ros2_ws/src
 git clone https://github.com/NoeFBou/exploration_and_research_turtlebot.git
+cd ~/ros2_ws/src/exploration_and_research_turtlebot/
+pip install -r requirements.txt
 cd ~/ros2_ws
 sudo rosdep init
 rosdep update
