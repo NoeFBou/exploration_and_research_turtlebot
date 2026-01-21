@@ -145,7 +145,7 @@ Ou
 cd ~/ros2_ws/src/exploration_and_research_turtlebot/
 ./launch.sh
 ```
-*Attendez que "Nav2" soit prêt et que le message "Superviseur Prêt" apparaisse.*
+*Attendez que "Nav2" soit prêt et que le message "Superviseur Prêt" apparaisse et que la fenetre de la vision du turtlebot apparaisse*
 
 Terminal 2 : Lancer l'interface GUI de contrôle (Le premier terminal peut être laissé en arrière-plan, il ne sert plus qu'au débogage)
 ```bash
