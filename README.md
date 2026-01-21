@@ -6,7 +6,7 @@ Le projet combine :
 - SLAM & Exploration (Nav2, SLAM Toolbox, Explore Lite)
 - Vision par Ordinateur (YOLOv11 + Caméra OAK-D-PRO)
 - Intelligence Décisionnelle (Behavior Trees avec py_trees)
-- Human-in-the-loop (Validation humaine et récupération manuelle en cas d'échec via un controleur)
+- Human-in-the-loop (Validation humaine et récupération manuelle en cas d'échec via un contrôleur)
 
 Ce projet a été réalisé dans le cadre des cours de _Systèmes intelligents autonomes_ et d'_Edge Computing et IA embarquée_ pour les étudiants de la mineure IoT CPS et d'IA du Master 2 Informatique de Nice.
 
@@ -19,7 +19,7 @@ https://github.com/user-attachments/assets/cd7010fb-da89-4ccd-af83-5f72bb1777f9
 3. **Interface GUI de controle :** L'utilisateur reçoit la liste des objets trouvés et choisit une cible. Il peut également interrompre et "skip" les étapes.
 4. **Navigation Hybride :**
    * **Longue distance :** Utilise Nav2 pour se rendre proche de la cible.
-   * **Courte distance :** Bascule sur une approche automatique(par cmd) basé sur la vision de la caméra pour l'approche finale vers l'objet cible (alignment et approche mathématique, il manque encore un feedback de la caméra).
+   * **Courte distance :** Bascule sur une approche automatique (par cmd) basée sur la vision de la caméra pour l'approche finale vers l'objet cible (alignement et approche mathématique, il manque encore un feedback de la caméra).
 
 https://github.com/user-attachments/assets/d19c5913-3cb8-4dc5-a7b7-ac0b6a4e0e43
 
@@ -39,7 +39,7 @@ _note : les vidéos sont disponibles dans le dossier ressource du répo_
 * Disposition : Les objets doivent être espacés d'au moins 70 cm les uns des autres dans l'environnement (axe d'amélioration).
 * Faux positifs : Possibilité de fausses détections (axes d'amélioration : affiner le modèle IA, améliorer l'algorithme de data association ou ajouter un comportement de vérification de la présence réelle de l'objet en amont).
 * Staticité : Les objets ne sont détectés que pendant la phase d'exploration ; l'environnement est supposé fixe ensuite.
-* Saisie : L'approche et la saisie automatique sont des prototypes (taux d'erreur un peu élevé). Il peut y voir des problèmes au retour à la base si nav2 descide d'effectuer une marche arrière. 
+* Saisie : L'approche et la saisie automatique sont des prototypes (taux d'erreur un peu élevé). Il peut y avoir des problèmes au retour à la base si Nav2 décide d'effectuer une marche arrière. 
 
 
 ## Prérequis Système
@@ -51,7 +51,7 @@ _note : les vidéos sont disponibles dans le dossier ressource du répo_
 
 ---
 
-* ## Installation
+## Installation
 
 ### 1. Installer ROS 2
 
@@ -171,11 +171,11 @@ L'arbre est conçu comme une Séquence Globale divisée en 4 phases distinctes(d
 1. Phase 0 : Initialisation
    * Safety Stop : Désactive l'exploration automatique(explorer lite) par default, l'exploration automatique se lance automatiquement, il faut danc la désactiver avec le topic : .
    * Init Ouvrir Pince : S'assure que la pince est ouverte et prête.
-   * Attente GO : Le robot reste en attente tant que l'utilisateur n'a pas appuyé sur "Entrée" dans l'interface GUU du controleur.
+   * Attente GO : Le robot reste en attente tant que l'utilisateur n'a pas appuyé sur "Entrée" dans l'interface GUI du controleur.
 2. Phase 1 : Exploration & Cartographie (OneShot)
    * Auto Explore ON : Active le nœud explore_lite.
    * En Parallel : 
-     * Object Recorder : Enregistre en continu la position des objets (cubes rouges) détectés par l noeud IA. Applique algorithme de Data Association (pour éviter la saturation d'objets et le bruit de détection), basé sur la distance euclidienne. Les détections successives situées dans un rayon de 70cm sont fusionnées via une moyenne cumulative, ce qui permet de stabiliser la position estimée de l'objet au fil du temps. A noter qu'il y a quand un certain nombre de faux positif
+     * Object Recorder : Enregistre en continu la position des objets (cubes rouges) détectés par le noeud IA. Applique algorithme de Data Association (pour éviter la saturation d'objets et le bruit de détection), basé sur la distance euclidienne. Les détections successives situées dans un rayon de 70cm sont fusionnées via une moyenne cumulative, ce qui permet de stabiliser la position estimée de l'objet au fil du temps. A noter qu'il y a quand un certain nombre de faux positif
      * Timer 100s : La phase dure 100 secondes. Une fois le temps écoulé, le Parallel réussit et on passe à la suite. Mesure de sécurité pour empecher que l'exploration dure indefiniment en cas de blocage des "goal" nav2 du turtle et pour la présentation de la simulation. A ajuster(le temps par exemple) ou supprimer selon les besoins. 
      * La phase est executé une seule fois et les objets seront détectés uniquement dans cette phase. 
 4. Phase 2 : Sélection de la Cible
@@ -186,7 +186,7 @@ L'arbre est conçu comme une Séquence Globale divisée en 4 phases distinctes(d
       cette branche est divisée en trois sous-étapes :
    1. Approche Longue Distance (Nav2) : 
       * Le robot utilise la stack de navigation ROS 2 pour se rendre près de l'objet.
-      * Interruption (Skip) : Cette action est placée dans un nœud Parallel. Si l'utilisateur appuie sur "S" (Skip), la navigation est annulée et l'arbre passe à l'étape suivante. Utile si on s'est trompé ou qu'on souhaite changer de cible ou si le robot est bloqué.
+      * Interruption (Skip) : Cette action est placée dans un nœud Parallel. Si l'utilisateur appuie sur "S" (Skip), la navigation est annulée et l'arbre passe à l'étape suivante, utile si l'on se trompe ou qu'on souhaite changer de cible ou si le robot est bloqué.
    2. Boucle de Tentative d'attrapage/de catch de l'objet (Retry Loop) :
       * Demande Alignement : Le robot attend votre confirmation que c'est le bon objet à attraper pour commencer une maneuvre d'alignement.
       * Rotation "Visuelle" : S'aligne face à l'objet(mathématiquement).
@@ -197,21 +197,29 @@ L'arbre est conçu comme une Séquence Globale divisée en 4 phases distinctes(d
             Fin de Mission
    3. Signal IDLE : Une fois la mission terminée (ou abandonnée via Abort), ce nœud envoie le signal "IDLE" pour réinitialiser le menu du contrôleur.
 
+
+## Structure du Répertoire (
+```text
+tb3_autonomy/
+├── behaviors/      # Comportements py_trees (actions, vision, nav)
+├── launch/         # Fichiers de lancement
+├── nodes/          # Noeuds ROS 2 (Controller, Vision, Catch)
+├── params/         # Configuration Nav2 et Controlleurs
+└── urdf/           # Modèle du robot (Xacro)
+```
+
 ## Diagramme Visuel de l'arbre de comportement
 
 ```mermaid
 graph TD
-    %% Noeuds principaux
     Root(" Mission Supervisor<br/>(Sequence)")
     
-    %% PHASE 0: INIT
     P0("Phase 0: Initialisation<br/>[OneShot]")
     P0_Seq("Séquence Init")
     Stop1[Safety Stop]
     Open1[Ouvrir Pince]
     WaitStart[Attente Signal 'GO']
 
-    %% PHASE 1: EXPLORE
     P1("Phase 1: Exploration<br/>[OneShot]")
     P1_Seq("Séquence Explore")
     AutoExp[Auto Explore ON]
@@ -219,69 +227,55 @@ graph TD
     Recorder[Object Recorder]
     Timer[Timer 100s]
 
-    %% PHASE 2: SELECT
     P2("Phase 2: Sélection<br/>(Sequence)")
     StopExp[Stop Explore]
     WaitSelect[Attente Choix Utilisateur]
 
-    %% PHASE 3: FETCH
     P3("Phase 3: Récupération<br/>(Sequence)")
     
-    %% Sous-partie Navigation
     NavPar(" Approche ou Skip<br/>(Parallel)")
     NavSeq("Nav2 Sequence")
     GoTo[GoTo Detected Target]
     SkipBtn[Bouton SKIP]
 
-    %% Sous-partie Loop / Abort
     LoopAbort(" Boucle ou Abort<br/>(Parallel)")
     AbortBtn[Bouton ABORT]
     RetryDec(" Retry Loop<br/>[Decorator]")
     AttemptSeq("Tentative Catch<br/>(Sequence)")
     
-    %% Actions fines
     AskAlign{Demande<br/>Alignement?}
     Rotate[Rotation Visuelle]
     Advance[Avance Fine]
     
-    %% Sélecteur Auto/Manuel
     Selector(" Auto ou Manuel<br/>(Selector)")
     
-    %% Branche Auto
     SeqAuto("Branche AUTO<br/>(Sequence)")
     AskCatch{Confirmer<br/>Catch?}
     ActionCatch[Fermer Pince]
     CheckCatch{Vérifier<br/>Prise?}
     HomeAuto(" Retour Base<br/>(Auto)")
 
-    %% Branche Manuel
     SeqMan("Branche MANUEL<br/>(Sequence)")
     ManRec[ Pilotage Manuel]
     HomeMan(" Retour Base<br/>(Manuel)")
 
-    %% Signal Fin
     Idle[Signal IDLE]
 
-    %% LIENS
     Root --> P0
     Root --> P1
     Root --> P2
     Root --> P3
 
-    %% Phase 0
     P0 --> P0_Seq
     P0_Seq --> Stop1 --> Open1 --> WaitStart
 
-    %% Phase 1
     P1 --> P1_Seq
     P1_Seq --> AutoExp --> ScanPar
     ScanPar --> Recorder
     ScanPar --> Timer
 
-    %% Phase 2
     P2 --> StopExp --> WaitSelect
 
-    %% Phase 3
     P3 --> NavPar --> LoopAbort --> Idle
     
     NavPar --> NavSeq --> GoTo
@@ -298,8 +292,6 @@ graph TD
     SeqAuto --> AskCatch --> ActionCatch --> CheckCatch --> HomeAuto
     SeqMan --> ManRec --> HomeMan
 
-    %% Styles
-    %% AJOUT DE color:#000 pour forcer le texte noir en mode Dark
     classDef seq fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000;
     classDef par fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000;
     classDef sel fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px,color:#000;
@@ -311,12 +303,11 @@ graph TD
     class Stop1,Open1,WaitStart,AutoExp,Recorder,Timer,StopExp,WaitSelect,GoTo,SkipBtn,AbortBtn,AskAlign,Rotate,Advance,AskCatch,ActionCatch,CheckCatch,ManRec,HomeAuto,HomeMan,Idle act;
 ```
 
-# Architecture des Topics ROS 2 (data flow)
+## Architecture des Topics ROS 2 (data flow)
 Schéma montre comment l'information circule entre vos nœuds : de la caméra jusqu'aux moteurs, en passant par le Supervisor et le Controller.
 
 ```mermaid
 graph TD
-    %% Noeuds ROS 2
     subgraph SENSORS [Capteurs & IA]
         Cam(OAK-D / Caméra)
         YOLO[sim_yolo_depth_node]
@@ -336,11 +327,9 @@ graph TD
         Base[Base Mobile]
     end
 
-    %% Flux de données (Topics)
     Cam -->|/rgb/image_raw| YOLO
     YOLO -->|/target_object_pose| BT
     
-    %% Communication Supervisor <-> Controller
     BT -->|/mission/robot_status| CTRL
     BT -->|/supervisor/known_objects| CTRL
     
@@ -350,74 +339,71 @@ graph TD
     CTRL -->|/mission/abort| BT
     CTRL -->|/mission/skip_nav| BT
 
-    %% Actions du Cerveau
     BT -->|Action Client| Nav2
     BT -->|/catch| Catch
     
-    %% Commandes Moteurs (Priorités)
     Nav2 -->|/cmd_vel| Base
     BT -->|/cmd_vel| Base
     CTRL -->|/cmd_vel<br/>Mode Manuel| Base
     Catch -->|/joint_trajectory| Base
 
-    %% Styles
-    %% Ajout de color:#000 pour que le titre des subgraphs reste noir
-    classDef node fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#000;
-    classDef topic stroke-dasharray: 5 5;
-    class SENSORS,BRAIN,UI,ACTUATORS node;
+    classDef group fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#000;
+    
+    classDef item fill:#ffffff,stroke:#000000,stroke-width:1px,color:#000;
+
+    class SENSORS,BRAIN,UI,ACTUATORS group;
+    class Cam,YOLO,BT,CTRL,Nav2,Catch,Base item;
 ```
 
-# Machine à États du Contrôleur
-Description du fonctionnment de l'interface GUI de controle et comment il réafit aux messages des comportements/noeuds.
+## Machine à États du Contrôleur
+Description du fonctionnment de l'interface GUI de controle et comment il réagit aux messages des comportements/noeuds.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> IDLE: Démarrage
-
-    state "IDLE (Menu)" as IDLE
+    direction TB
+    
+    [*] --> WAIT_START : Lancement Script
+    
+    state "ATTENTE DÉMARRAGE" as WAIT_START
+    state "IDLE (Menu Sélection)" as IDLE
     state "MOVING (En Mission)" as MOVING
-    state "MANUAL_MODE (Teleop)" as MANUAL
+    state "MANUEL (Teleop)" as MANUAL
 
-    %% Transitions principales
-    IDLE --> MOVING: Sélection Cible (ID)
-    MOVING --> IDLE: Fin de Mission / Abort
+    WAIT_START --> IDLE : Appui sur [ENTRÉE] (Lance Exploration)
+    
+    IDLE --> MOVING : Sélection Cible (ID)
+    MOVING --> IDLE : Fin / Skip / Annulation
 
-    %% Interactions Robot -> Humain
     state "Demandes de Validation" as ASK {
         state "READY_TO_ALIGN" as ALIGN
         state "READY_TO_CATCH" as CATCH
         state "READY_TO_VERIFY" as VERIF
 
-        ALIGN: Robot Arrivé (Nav2)
-        CATCH: Robot Aligné (Vision)
-        VERIF: Objet Saisi ?
+        ALIGN : Robot Arrivé (Nav2)
+        CATCH : Robot Aligné
+        VERIF : Objet Saisi ?
 
-        [*] --> ALIGN
-        ALIGN --> CATCH: Oui
-        CATCH --> VERIF: Oui (Fermer Pince)
+        ALIGN --> CATCH : Oui
+        CATCH --> VERIF : Oui
     }
 
-    %% Liens événements
-    MOVING --> ALIGN: msg "WAITING_ALIGNMENT"
-    MOVING --> CATCH: msg "WAITING_CATCH"
-    MOVING --> VERIF: msg "WAITING_CATCH_VERIFICATION"
+    MOVING --> ALIGN : msg "WAITING_ALIGNMENT"
+    MOVING --> CATCH : msg "WAITING_CATCH"
+    MOVING --> VERIF : msg "WAITING_CATCH_VERIFICATION"
 
-    %% Réponses Humaines
-    ALIGN --> MOVING: Oui / Non
-    CATCH --> MOVING: Oui / Non
-    VERIF --> MOVING: Succès / Échec
+    ALIGN --> MOVING : Oui/Non
+    CATCH --> MOVING : Oui/Non
+    VERIF --> MOVING : Succès/Echec
 
-    %% Mode Manuel (Recovery)
-    MOVING --> MANUAL msg: "MANUAL_RECOVERY"
-    MANUAL --> MOVING: "Succès (Entrée)"
+    MOVING --> MANUAL : "MANUAL_RECOVERY"
+    MANUAL --> MOVING : Succès (Entrée)
 
-    %% Notes
-    note right of MANUAL
-        Contrôle Clavier :
-        Z/S/Q/D + Espace
+    note left of MANUAL
+        Clavier : Z,Q,S,D
+        Pince : Espace
     end note
 ```
 
 ## Auteurs & Licence
-Projet réalisé par **Noé**, **Nathan**, **Louis**.
-Licence : Apache 2.0 / MIT (À définir).
+Projet réalisé par **[Noé FLORENCE](https://github.com/NoeFBou)**, **[Nathan AMOUSSOU](https://github.com/NathanAmoussou)**, **[Louis MALMASSARY](https://github.com/Kitsunro)**.
+Licence : Apache 2.0 / MIT.
