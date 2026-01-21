@@ -76,6 +76,12 @@ sudo apt install ros-humble-desktop
 sudo apt install ros-dev-tools
 ```
 
+Sourcing automatique
+```bash
+echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
+
 installation les paquets de notre projet
 
 
@@ -90,36 +96,32 @@ sudo apt install ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-
 sudo apt install ros-humble-turtlebot3 ros-humble-turtlebot3-gazebo -y
 sudo apt install python3-pip python3-opencv ros-humble-cv-bridge ros-humble-vision-opencv -y
 sudo apt install ros-humble-stereo-image-proc -y
-cd ~/ros2_ws/src
-git clone https://github.com/robo-friends/m-explore-ros2.git
-```
-
-### 3. Configuration de l'environnement
-```bash
-echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc
-echo 'export TURTLEBOT3_MODEL=waffle' >> ~/.bashrc
-echo 'export LDS_MODEL=LDS-01' >> ~/.bashrc
-# Fix pour l'affichage 3D dans les Machines Virtuelles
-echo 'export LIBGL_ALWAYS_SOFTWARE=1' >> ~/.bashrc
-# Rechargez le terminal
-source ~/.bashrc
-```
-### 4. Clonage et Compilation
-```bash
-# Création du workspace
 mkdir -p ~/ros2_ws/src
 cd ~/ros2_ws/src
+git clone https://github.com/robo-friends/m-explore-ros2.git
+cd ~/ros2_ws/
+```
 
-# Cloner le projet
+### 4. Clonage et Compilation
+```bash
+cd ~/ros2_ws/src
 git clone [https://github.com/NoeFBou/exploration_and_research_turtlebot.git](https://github.com/NoeFBou/exploration_and_research_turtlebot.git)
-
 cd ~/ros2_ws
+sudo rosdep init
+rosdep update
 rosdep install --from-paths src --ignore-src -r -y
-
-# Compiler
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+### 3. Configuration de l'environnement à adapter selon votre config(gpu disponible ou non)
+```bash
+echo 'export LDS_MODEL=LDS-01' >> ~/.bashrc
+echo 'export LIBGL_ALWAYS_SOFTWARE=1' >> ~/.bashrc
+source ~/.bashrc
+```
+
+
 
 ## Lancement
 
