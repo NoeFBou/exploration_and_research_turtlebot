@@ -11,7 +11,7 @@ def generate_launch_description():
     """
 
     # --- Configuration ---
-    default_blob = 'tb3_autonomy/best_openvino_2022.1_6shave.blob'
+    default_blob = '/home/turtlebot3/turtlebot3_ws/src/exploration_and_research_turtlebot/tb3_autonomy/best_openvino_2022.1_6shave.blob'
 
     blob_path_arg = DeclareLaunchArgument(
         'blob_path',
@@ -43,7 +43,7 @@ def generate_launch_description():
             'use_sim_time': False,
             'mode': 'real',
             'real_open_angle': 0,
-            'real_close_angle': 45, 
+            'real_close_angle': 45,
             'real_support_angle': -10
         }]
     )
