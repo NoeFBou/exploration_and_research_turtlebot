@@ -202,7 +202,7 @@ class OakYoloDepthNode(Node):
         stereo.depth.link(xout_depth.input)
 
         # Device
-        with dai.Device(pipeline) as device:
+        with dai.Device(pipeline, maxUsbSpeed=dai.UsbSpeed.HIGH) as device:
             # Intrinsics (fx,fy,cx,cy) depuis la calibration device
             # IMPORTANT: On utilise la resolution depth (pas input_size) car:
             # - Le preview 640x640 est CROPPE par DepthAI pour respecter l'aspect ratio carre
