@@ -18,6 +18,8 @@ setup(
 
         (os.path.join("share", package_name, "params"), glob("params/*.yaml")),
         (os.path.join("share", package_name, "models"), glob("models/*.pt")),
+        (os.path.join("share", package_name, "models"), glob("models/*.blob")),
+
         (os.path.join("share", package_name, "meshes", "bases"), glob("meshes/bases/*.stl")),
         (os.path.join("share", package_name, "meshes", "wheels"), glob("meshes/wheels/*.stl")),
         (os.path.join("share", package_name, "meshes", "sensors"), glob("meshes/sensors/*.stl")),
@@ -34,12 +36,13 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "supervisor = tb3_autonomy.mission_supervisor:main", # Si celui-ci n'a pas bougé, ne pas toucher
-            "bt_supervisor = tb3_autonomy.bt_supervisor:main",   # Celui-ci est à la racine de tb3_autonomy/
+            "supervisor = tb3_autonomy.mission_supervisor:main",
+            "bt_supervisor = tb3_autonomy.bt_supervisor:main",
             "mission_controller = tb3_autonomy.nodes.controller:main",
             "catch_node = tb3_autonomy.nodes.catch_node:main",
             "sim_yolo_depth = tb3_autonomy.nodes.sim_yolo_depth_node:main",
             "oak_yolo_depth = tb3_autonomy.nodes.oak_yolo_depth_node:main",
+            "servo_driver = tb3_autonomy.nodes.servo_driver:main",
         ],
     },
     # entry_points={

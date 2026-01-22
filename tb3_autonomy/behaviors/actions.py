@@ -1,26 +1,38 @@
-import rclpy
-import py_trees
+#!/usr/bin/env python3
 import math
 import time
-from rclpy.node import Node
-from geometry_msgs.msg import Twist, PoseStamped
-from std_msgs.msg import Bool, Int32, String
+from typing import Optional
+
+import rclpy
+import py_trees
 import tf2_ros
 from tf2_geometry_msgs import do_transform_pose
 
+from rclpy.node import Node
+from geometry_msgs.msg import Twist, PoseStamped
+from std_msgs.msg import Bool, Int32, String
+
+
 # =============================================================================
-# CLASSES DE NAVIGATION & MOUVEMENT
+# NAVIGATION & MOVEMENT BEHAVIORS
 # =============================================================================
 
 class RotateToTarget(py_trees.behaviour.Behaviour):
     """
-    Tourne sur place pour aligner le robot face à la cible.
-    Utilise Time(0) pour éviter les blocages TF.
+    Rotates the robot in place to face the target pose stored in the blackboard.
+
+    Uses tf2 to transform the target pose into the robot's base frame.
     """
-    def __init__(self, name="Alignement", threshold=0.05):
+
+    def __init__(self, name: str = "Alignement", threshold: float = 0.05):
+        """
+        Args:
+            name (str): Name of the behavior.
+            threshold (float): Angular error tolerance in radians.
+        """
         super(RotateToTarget, self).__init__(name)
-        self.threshold = threshold # ~3 degrés
-        self.node = None
+        self.threshold = threshold
+        self.node: Optional[Node] = None
         self.cmd_vel_pub = None
         self.tf_buffer = None
         self.tf_listener = None
@@ -35,7 +47,7 @@ class RotateToTarget(py_trees.behaviour.Behaviour):
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self.node)
 
     def initialise(self):
-        self.node.get_logger().info("[Align] Début de la rotation sur place...")
+        self.node.get_logger().info(f"[{self.name}] Starting rotation to target...")
 
     def update(self):
         target_map = self.blackboard.target_pose_map
@@ -43,31 +55,37 @@ class RotateToTarget(py_trees.behaviour.Behaviour):
             return py_trees.common.Status.FAILURE
 
         try:
+            # Look up transform at time 0 to avoid TF latency issues
             transform = self.tf_buffer.lookup_transform(
                 'base_link',
                 'map',
                 rclpy.time.Time(seconds=0)
             )
             target_local = do_transform_pose(target_map.pose, transform)
-        except Exception as e:
+        except Exception:
             return py_trees.common.Status.RUNNING
 
         x = target_local.position.x
         y = target_local.position.y
         angle_error = math.atan2(y, x)
 
+        # Check if aligned
         if abs(angle_error) < self.threshold:
-            self.node.get_logger().info("[Align] Cible centrée ! Stop.")
+            self.node.get_logger().info(f"[{self.name}] Target aligned. Stopping.")
             self.cmd_vel_pub.publish(Twist())
             return py_trees.common.Status.SUCCESS
 
+        # P-Controller for rotation
         twist = Twist()
         twist.linear.x = 0.0
         k_p = 1.5
-        angular_speed = k_p * angle_error
         max_speed = 0.5
+        angular_speed = k_p * angle_error
+
+        # Clamp speed
         twist.angular.z = max(min(angular_speed, max_speed), -max_speed)
 
+        # Minimum speed to overcome friction
         if abs(twist.angular.z) < 0.1:
             twist.angular.z = 0.1 if angle_error > 0 else -0.1
 
@@ -75,32 +93,39 @@ class RotateToTarget(py_trees.behaviour.Behaviour):
         return py_trees.common.Status.RUNNING
 
     def terminate(self, new_status):
-        self.cmd_vel_pub.publish(Twist())
+        if self.cmd_vel_pub:
+            self.cmd_vel_pub.publish(Twist())
 
 
 class VisualServoingApproach(py_trees.behaviour.Behaviour):
     """
-    Approche finale 'manuelle'. Avance tout droit avec correction légère.
+    Performs a visual servoing approach towards the target.
+    Moves forward while correcting the heading until a minimum distance is reached.
     """
-    def __init__(self, name="Visual Servoing", min_dist=0.10):
+
+    def __init__(self, name: str = "Visual Servoing", min_dist: float = 0.18):
+        """
+        Args:
+            name (str): Name of the behavior.
+            min_dist (float): Stopping distance from the target in meters.
+        """
         super(VisualServoingApproach, self).__init__(name)
         self.blackboard = py_trees.blackboard.Client(name="Action")
         self.blackboard.register_key(key="target_pose_map", access=py_trees.common.Access.READ)
-        self.node = None
+        self.node: Optional[Node] = None
         self.cmd_vel_pub = None
         self.tf_buffer = None
         self.tf_listener = None
         self.target_min_dist = min_dist
-        #self.kp_linear = 0.5
 
     def setup(self, **kwargs):
-        self.node: Node = kwargs.get('node')
+        self.node = kwargs.get('node')
         self.cmd_vel_pub = self.node.create_publisher(Twist, '/cmd_vel', 10)
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self.node)
 
     def initialise(self):
-        self.node.get_logger().info("[Action] Démarrage approche visuelle...")
+        self.node.get_logger().info(f"[{self.name}] Starting visual approach...")
 
     def update(self):
         target_map = self.blackboard.target_pose_map
@@ -118,32 +143,40 @@ class VisualServoingApproach(py_trees.behaviour.Behaviour):
             return py_trees.common.Status.RUNNING
 
         x_dist = target_local.position.x
-        y_lat  = target_local.position.y
+        y_lat = target_local.position.y
 
+        # Check arrival condition
         if x_dist <= self.target_min_dist:
-            self.node.get_logger().info(f"[Visual] Stop final (Dist={x_dist:.2f}m).")
+            self.node.get_logger().info(f"[{self.name}] Target reached (Dist={x_dist:.2f}m).")
             self.cmd_vel_pub.publish(Twist())
             return py_trees.common.Status.SUCCESS
 
+        # Simple Proportional Control
         twist = Twist()
+        # Slow down when close
         twist.linear.x = 0.15 if x_dist > 0.4 else 0.05
+        # Correct heading
         twist.angular.z = 0.8 * y_lat
 
         self.cmd_vel_pub.publish(twist)
         return py_trees.common.Status.RUNNING
 
     def terminate(self, new_status):
-        if new_status != py_trees.common.Status.RUNNING:
+        if new_status != py_trees.common.Status.RUNNING and self.cmd_vel_pub:
             self.cmd_vel_pub.publish(Twist())
 
 
 class BackUp(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Reculer", duration=2.0, speed=-0.1):
+    """
+    Moves the robot backward for a specified duration.
+    """
+
+    def __init__(self, name: str = "Back Up", duration: float = 2.0, speed: float = -0.1):
         super(BackUp, self).__init__(name)
         self.duration = duration
         self.speed = speed
         self.start_time = None
-        self.node = None
+        self.node: Optional[Node] = None
         self.pub = None
 
     def setup(self, **kwargs):
@@ -152,7 +185,7 @@ class BackUp(py_trees.behaviour.Behaviour):
 
     def initialise(self):
         self.start_time = self.node.get_clock().now()
-        self.node.get_logger().info("[Nav] Recul en cours...")
+        self.node.get_logger().info(f"[{self.name}] Backing up...")
 
     def update(self):
         now = self.node.get_clock().now()
@@ -167,13 +200,15 @@ class BackUp(py_trees.behaviour.Behaviour):
         self.pub.publish(msg)
         return py_trees.common.Status.RUNNING
 
+
 class ManualRecovery(py_trees.behaviour.Behaviour):
     """
-    Active le mode manuel sur le contrôleur et attend le succès.
+    Activates manual control mode on the mission controller and waits for user confirmation.
     """
-    def __init__(self, name="Récupération Manuelle"):
+
+    def __init__(self, name: str = "Manual Recovery"):
         super(ManualRecovery, self).__init__(name)
-        self.node = None
+        self.node: Optional[Node] = None
         self.pub_status = None
         self.pub_catch = None
         self.sub_conf = None
@@ -187,13 +222,13 @@ class ManualRecovery(py_trees.behaviour.Behaviour):
 
     def initialise(self):
         self.confirmation = None
-        self.node.get_logger().info("[Manual] Ouverture pince...")
+        self.node.get_logger().info(f"[{self.name}] Safety: Opening gripper.")
         self.pub_catch.publish(Bool(data=False))
 
         msg = String()
         msg.data = "MANUAL_RECOVERY"
         self.pub_status.publish(msg)
-        self.node.get_logger().info("[Manual] En attente de l'opérateur humain...")
+        self.node.get_logger().info(f"[{self.name}] Waiting for human operator...")
 
     def _cb(self, msg):
         self.confirmation = msg.data
@@ -203,26 +238,27 @@ class ManualRecovery(py_trees.behaviour.Behaviour):
             return py_trees.common.Status.RUNNING
 
         if self.confirmation:
-            self.node.get_logger().info("[Manual] L'opérateur a confirmé la prise !")
+            self.node.get_logger().info(f"[{self.name}] Operator confirmed success.")
             return py_trees.common.Status.SUCCESS
         else:
-            self.node.get_logger().info("[Manual] L'opérateur a abandonné.")
+            self.node.get_logger().info(f"[{self.name}] Operator reported failure.")
             return py_trees.common.Status.FAILURE
 
 
 # =============================================================================
-# CLASSES DE LOGIQUE & SIGNAUX
+# LOGIC & SIGNAL BEHAVIORS
 # =============================================================================
 
 class PublishStatus(py_trees.behaviour.Behaviour):
     """
-    Publie un statut spécifique (ex: "IDLE") sur /mission/robot_status
+    Publishes a specific status string to the /mission/robot_status topic.
+    Useful for updating the UI state (e.g., setting IDLE).
     """
-    def __init__(self, name="Publier Statut", status="IDLE"):
+
+    def __init__(self, name: str = "Publish Status", status: str = "IDLE"):
         super(PublishStatus, self).__init__(name)
-        # CORRECTION : On renomme la variable pour éviter le conflit avec py_trees
         self.target_status = status
-        self.node = None
+        self.node: Optional[Node] = None
         self.pub = None
 
     def setup(self, **kwargs):
@@ -231,14 +267,17 @@ class PublishStatus(py_trees.behaviour.Behaviour):
 
     def update(self):
         msg = String()
-        # CORRECTION : On utilise la nouvelle variable
         msg.data = self.target_status
         self.pub.publish(msg)
         return py_trees.common.Status.SUCCESS
 
 
 class WaitDuration(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Timer", duration=100.0):
+    """
+    Waits for a specific duration before returning SUCCESS.
+    """
+
+    def __init__(self, name: str = "Timer", duration: float = 100.0):
         super(WaitDuration, self).__init__(name)
         self.duration = duration
         self.start_time = None
@@ -254,9 +293,14 @@ class WaitDuration(py_trees.behaviour.Behaviour):
 
 
 class WaitForUserSelection(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Attente Choix"):
+    """
+    Waits for the user to select a target ID via the mission controller.
+    Updates the blackboard with the selected target's pose.
+    """
+
+    def __init__(self, name: str = "Wait Selection"):
         super(WaitForUserSelection, self).__init__(name)
-        self.node = None
+        self.node: Optional[Node] = None
         self.sub = None
         self.pub_status = None
         self.received_id = -1
@@ -271,11 +315,11 @@ class WaitForUserSelection(py_trees.behaviour.Behaviour):
         self.pub_status = self.node.create_publisher(String, '/mission/robot_status', 10)
 
     def _msg_callback(self, msg):
-        self.node.get_logger().info(f"[UI] Commande reçue : ID {msg.data}")
+        self.node.get_logger().info(f"[UI] Received selection: ID {msg.data}")
         self.received_id = msg.data
 
     def initialise(self):
-        self.node.get_logger().info("[UI] En attente d'une sélection...")
+        self.node.get_logger().info("[UI] Waiting for user selection...")
         msg = String()
         msg.data = "IDLE"
         self.pub_status.publish(msg)
@@ -292,21 +336,25 @@ class WaitForUserSelection(py_trees.behaviour.Behaviour):
         selected_obj = next((o for o in objects if o['id'] == target_id), None)
 
         if selected_obj:
-            self.node.get_logger().info(f"[UI] Cible #{target_id} validée.")
+            self.node.get_logger().info(f"[UI] Target #{target_id} confirmed.")
             self.blackboard.target_pose_map = selected_obj['pose']
             self.received_id = -1
             return py_trees.common.Status.SUCCESS
         else:
-            self.node.get_logger().warn(f"[UI] ID {target_id} invalide ou inconnu !")
+            self.node.get_logger().warn(f"[UI] ID {target_id} is invalid or unknown.")
             self.received_id = -1
             self.pub_status.publish(String(data="IDLE"))
             return py_trees.common.Status.RUNNING
 
 
 class WaitForSkipSignal(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Attente Skip"):
+    """
+    Monitors the skip signal topic. Returns SUCCESS if a skip is requested.
+    """
+
+    def __init__(self, name: str = "Wait Skip"):
         super(WaitForSkipSignal, self).__init__(name)
-        self.node = None
+        self.node: Optional[Node] = None
         self.sub = None
         self.skip_received = False
 
@@ -320,7 +368,7 @@ class WaitForSkipSignal(py_trees.behaviour.Behaviour):
     def _cb(self, msg):
         if self.status == py_trees.common.Status.RUNNING:
             if msg.data:
-                self.node.get_logger().info(f"[{self.name}] SKIP REÇU !")
+                self.node.get_logger().info(f"[{self.name}] SKIP signal received.")
                 self.skip_received = True
 
     def update(self):
@@ -330,9 +378,13 @@ class WaitForSkipSignal(py_trees.behaviour.Behaviour):
 
 
 class WaitForAbortSignal(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Attente Abort"):
+    """
+    Monitors the abort signal topic. Returns SUCCESS if an abort is requested.
+    """
+
+    def __init__(self, name: str = "Wait Abort"):
         super(WaitForAbortSignal, self).__init__(name)
-        self.node = None
+        self.node: Optional[Node] = None
         self.sub = None
         self.abort_received = False
 
@@ -346,7 +398,7 @@ class WaitForAbortSignal(py_trees.behaviour.Behaviour):
     def _cb(self, msg):
         if self.status == py_trees.common.Status.RUNNING:
             if msg.data:
-                self.node.get_logger().info(f"[{self.name}] ABORT REÇU !")
+                self.node.get_logger().info(f"[{self.name}] ABORT signal received.")
                 self.abort_received = True
 
     def update(self):
@@ -356,9 +408,13 @@ class WaitForAbortSignal(py_trees.behaviour.Behaviour):
 
 
 class WaitForStartSignal(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Attente Start"):
+    """
+    Waits for the start signal from the controller to begin the mission.
+    """
+
+    def __init__(self, name: str = "Wait Start"):
         super(WaitForStartSignal, self).__init__(name)
-        self.node = None
+        self.node: Optional[Node] = None
         self.sub = None
         self.start_received = False
 
@@ -368,7 +424,7 @@ class WaitForStartSignal(py_trees.behaviour.Behaviour):
 
     def initialise(self):
         self.start_received = False
-        self.node.get_logger().info("[Superviseur] En attente du signal START...")
+        self.node.get_logger().info("[Supervisor] Waiting for START signal...")
 
     def _cb(self, msg):
         if msg.data:
@@ -379,9 +435,14 @@ class WaitForStartSignal(py_trees.behaviour.Behaviour):
 
 
 class WaitForConfirmation(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Validation Humaine", status_msg="WAITING_CONFIRMATION"):
+    """
+    Asks for user confirmation via the mission controller.
+    Publishes a status message and waits for a boolean response.
+    """
+
+    def __init__(self, name: str = "Human Validation", status_msg: str = "WAITING_CONFIRMATION"):
         super(WaitForConfirmation, self).__init__(name)
-        self.node = None
+        self.node: Optional[Node] = None
         self.pub_status = None
         self.sub_conf = None
         self.confirmation = None
@@ -397,7 +458,7 @@ class WaitForConfirmation(py_trees.behaviour.Behaviour):
         msg = String()
         msg.data = self.status_msg
         self.pub_status.publish(msg)
-        self.node.get_logger().info(f"[Superviseur] {self.name} : Attente validation...")
+        self.node.get_logger().info(f"[{self.name}] Waiting for confirmation ({self.status_msg})...")
 
     def _cb(self, msg):
         self.confirmation = msg.data
@@ -407,17 +468,21 @@ class WaitForConfirmation(py_trees.behaviour.Behaviour):
             return py_trees.common.Status.RUNNING
 
         if self.confirmation:
-            self.node.get_logger().info(f"[Superviseur] {self.name} : Validé (OUI).")
+            self.node.get_logger().info(f"[{self.name}] Confirmed (YES).")
             return py_trees.common.Status.SUCCESS
         else:
-            self.node.get_logger().info(f"[Superviseur] {self.name} : Refusé (NON).")
+            self.node.get_logger().info(f"[{self.name}] Rejected (NO).")
             return py_trees.common.Status.FAILURE
 
 
 class CatchObject(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Catch Gripper"):
+    """
+    Activates the gripper to catch an object.
+    """
+
+    def __init__(self, name: str = "Catch Gripper"):
         super(CatchObject, self).__init__(name)
-        self.node = None
+        self.node: Optional[Node] = None
         self.pub_catch = None
         self.start_time = None
         self.duration = 4.0
@@ -427,7 +492,7 @@ class CatchObject(py_trees.behaviour.Behaviour):
         self.pub_catch = self.node.create_publisher(Bool, '/catch', 10)
 
     def initialise(self):
-        self.node.get_logger().info("[Action] ACTIVATION PINCE !")
+        self.node.get_logger().info("[Action] Closing Gripper.")
         msg = Bool()
         msg.data = True
         self.pub_catch.publish(msg)
@@ -437,17 +502,21 @@ class CatchObject(py_trees.behaviour.Behaviour):
         now = self.node.get_clock().now()
         elapsed = (now - self.start_time).nanoseconds / 1e9
         if elapsed > self.duration:
-            self.node.get_logger().info("[Action] Objet attrapé.")
+            self.node.get_logger().info("[Action] Object caught.")
             return py_trees.common.Status.SUCCESS
         return py_trees.common.Status.RUNNING
 
 
 class ToggleExploration(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Toggle Explore", enable=True, min_publish_time=0.5):
+    """
+    Enables or disables the exploration node (explore_lite).
+    """
+
+    def __init__(self, name: str = "Toggle Explore", enable: bool = True, min_publish_time: float = 0.5):
         super().__init__(name)
         self.enable = enable
         self.min_publish_time = min_publish_time
-        self.node = None
+        self.node: Optional[Node] = None
         self.pub = None
         self.start_time = None
         self.has_logged = False
@@ -467,7 +536,7 @@ class ToggleExploration(py_trees.behaviour.Behaviour):
 
         if not self.has_logged:
             state = "ON" if self.enable else "OFF"
-            self.node.get_logger().info(f"[Action] Exploration {state} (publication en cours...)")
+            self.node.get_logger().info(f"[Action] Exploration {state} (publishing...)")
             self.has_logged = True
 
         if self.pub.get_subscription_count() == 0:
@@ -481,7 +550,11 @@ class ToggleExploration(py_trees.behaviour.Behaviour):
 
 
 class ForceFailure(py_trees.behaviour.Behaviour):
-    def __init__(self, name="Force Fail"):
+    """
+    Always returns FAILURE. Used to control the flow in Selector/Retry loops.
+    """
+
+    def __init__(self, name: str = "Force Fail"):
         super(ForceFailure, self).__init__(name)
 
     def update(self):
@@ -490,11 +563,12 @@ class ForceFailure(py_trees.behaviour.Behaviour):
 
 class OpenGripper(py_trees.behaviour.Behaviour):
     """
-    Envoie le signal False sur /catch pour ouvrir la pince.
+    Opens the gripper by sending False to the /catch topic.
     """
-    def __init__(self, name="Ouvrir Pince"):
+
+    def __init__(self, name: str = "Open Gripper"):
         super(OpenGripper, self).__init__(name)
-        self.node = None
+        self.node: Optional[Node] = None
         self.pub_catch = None
         self.start_time = None
         self.duration = 2.0
@@ -504,7 +578,7 @@ class OpenGripper(py_trees.behaviour.Behaviour):
         self.pub_catch = self.node.create_publisher(Bool, '/catch', 10)
 
     def initialise(self):
-        self.node.get_logger().info("[Action] OUVERTURE PINCE !")
+        self.node.get_logger().info("[Action] Opening Gripper.")
         msg = Bool()
         msg.data = False
         self.pub_catch.publish(msg)

@@ -1,64 +1,91 @@
 import os
-import xacro
 import re
-from ament_index_python.packages import get_package_share_directory
+import xacro
+
+from ament_index_python.packages import get_package_share_directory, get_package_prefix
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable, GroupAction, RegisterEventHandler
+from launch.actions import (
+    IncludeLaunchDescription,
+    SetEnvironmentVariable,
+    GroupAction,
+    RegisterEventHandler,
+    ExecuteProcess,
+    TimerAction
+)
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node, PushRosNamespace
-from launch.actions import ExecuteProcess
-from ament_index_python.packages import get_package_prefix
-from launch.actions import TimerAction
 
-def generate_launch_description():
-    # --- 1. CONFIGURATION GÉNÉRALE ---
+
+def generate_launch_description() -> LaunchDescription:
+    """
+    Generates the complete LaunchDescription for the TurtleBot3 Autonomy mission.
+
+    This launch file orchestrates:
+    1. Gazebo simulation environment setup.
+    2. Robot State Publisher (URDF/Xacro processing).
+    3. Spawning the entity into Gazebo.
+    4. ROS 2 Controllers (Joint State Broadcaster & Gripper Controller).
+    5. Navigation Stack (SLAM Toolbox + Nav2).
+    6. Autonomous Exploration (explore_lite).
+    7. Vision & AI Nodes (Stereo Proc, YOLO simulation).
+    8. Behavior Tree Supervisor & Custom Logic.
+    """
+
+    # =========================================================================
+    # 1. CONFIGURATION & PATHS
+    # =========================================================================
     use_sim_time = 'true'
-
-    # Noms de fichiers (Mise à jour pour Xacro)
-    # Assure-toi que ce fichier existe bien dans tb3_autonomy/urdf/
     xacro_file_name = 'turtlebot3_burger_gripper.urdf.xacro'
+    world_file_name = 'my_room.sdf'
 
-    # Récupération des dossiers des packages
+    # Package Directories
     pkg_tb3_autonomy = get_package_share_directory('tb3_autonomy')
-    pkg_tb3_gazebo = get_package_share_directory('turtlebot3_gazebo')
     pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
-    pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     pkg_stereo_image_proc = get_package_share_directory('stereo_image_proc')
     pkg_tb3_description = get_package_share_directory('turtlebot3_description')
+    gazebo_ros_prefix = get_package_prefix('gazebo_ros')
 
-    # --- 2. GESTION DES CHEMINS ET VARIABLES D'ENVIRONNEMENT ---
-
-    # Configuration des modèles Gazebo
-    existing = os.environ.get('GAZEBO_MODEL_PATH', '')
-    gazebo_model_path = existing + ':' + os.path.join(pkg_tb3_description, '..') + ':' + os.path.join(pkg_tb3_autonomy, '..')
-
-    set_gazebo_model_path = SetEnvironmentVariable(
-        name='GAZEBO_MODEL_PATH',
-        value=gazebo_model_path
-    )
-
-    env_lidar = SetEnvironmentVariable(name='LDS_MODEL', value='LDS-01')
-    env_gl = SetEnvironmentVariable(name='LIBGL_ALWAYS_SOFTWARE', value='0')
-
-    # Chemins vers le Xacro et le fichier de config des contrôleurs
+    # File Paths
     urdf_path = os.path.join(pkg_tb3_autonomy, 'urdf', xacro_file_name)
     controllers_yaml = os.path.join(pkg_tb3_autonomy, 'params', 'ros2_controllers.yaml')
+    nav2_params = os.path.join(pkg_tb3_autonomy, 'params', 'my_nav2_params.yaml')
+    world_path = os.path.join(pkg_tb3_autonomy, 'worlds', world_file_name)
 
+    # Dynamic Path for YOLO Model (Recommended over hardcoded 'src/...')
+    # Assuming the model is installed into the share directory via setup.py/CMakeLists
+    yolo_model_path = os.path.join(pkg_tb3_autonomy, 'models', 'yolo11n_red_cube.pt')
+    # Fallback if file is not found in share (e.g. during development)
+    if not os.path.exists(yolo_model_path):
+        # Try local path relative to workspace root if needed, or keep your hardcoded one
+        yolo_model_path = 'src/exploration_and_research_turtlebot/tb3_autonomy/yolo11n_red_cube.pt'
 
-    # --- 3. TRAITEMENT DU XACRO ---
-    # On traite le fichier Xacro pour obtenir le XML final du robot
-    # On passe le chemin du yaml si ton xacro utilise $(arg controllers_file)
-    doc = xacro.process_file(
-        urdf_path,
-        mappings={'controllers_file': controllers_yaml}
-    )
+    # =========================================================================
+    # 2. ENVIRONMENT VARIABLES
+    # =========================================================================
+
+    # Configure Gazebo Model Path to include TurtleBot3 models
+    existing_model_path = os.environ.get('GAZEBO_MODEL_PATH', '')
+    gazebo_model_path = f"{existing_model_path}:{os.path.join(pkg_tb3_description, '..')}:{os.path.join(pkg_tb3_autonomy, '..')}"
+
+    set_env_vars = [
+        SetEnvironmentVariable(name='GAZEBO_MODEL_PATH', value=gazebo_model_path),
+        SetEnvironmentVariable(name='LDS_MODEL', value='LDS-01'),
+        SetEnvironmentVariable(name='LIBGL_ALWAYS_SOFTWARE', value='0')
+    ]
+
+    # =========================================================================
+    # 3. ROBOT DESCRIPTION (XACRO PROCESSING)
+    # =========================================================================
+
+    doc = xacro.process_file(urdf_path, mappings={'controllers_file': controllers_yaml})
     robot_desc = doc.toxml()
-    robot_desc = re.sub(r'<!--(.|\n)*?-->', '', robot_desc)
-    robot_desc = re.sub(r'<\?xml.*?\?>', '', robot_desc).strip()
-    # --- 4. NODES PRINCIPAUX ---
 
-    robot_state_publisher_cmd = Node(
+    # Clean up XML (remove comments and XML declaration)
+    robot_desc = re.sub(r'', '', robot_desc)
+    robot_desc = re.sub(r'<\?xml.*?\?>', '', robot_desc).strip()
+
+    robot_state_publisher_node = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         name='robot_state_publisher',
@@ -69,67 +96,11 @@ def generate_launch_description():
         }]
     )
 
-    spawn_entity_cmd = Node(
-        package='gazebo_ros',
-        executable='spawn_entity.py',
-        arguments=[
-            '-topic', 'robot_description',
-            '-entity', 'my_custom_waffle',
-            '-x', '-2.0',
-            '-y', '-0.5',
-            '-z', '0.05'
-        ],
-        output='screen'
-    )
+    # =========================================================================
+    # 4. GAZEBO SIMULATION
+    # =========================================================================
 
-    # --- 5. CONTROLLERS (ROS2 CONTROL) ---
-    # Ces nœuds chargent les contrôleurs définis dans ton YAML
-
-    jsb_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=[
-            'joint_state_broadcaster',
-            '--controller-manager', '/controller_manager',
-            '--controller-manager-timeout', '120'
-        ],
-        output='screen'
-    )
-
-    gripper_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=[
-            'gripper_controller',
-            '--controller-manager', '/controller_manager',
-            '--controller-manager-timeout', '120'
-        ],
-        output='screen'
-    )
-
-
-# CRUCIAL : On attend que spawn_entity_cmd se termine (que le robot soit dans Gazebo)
-    # avant de lancer les contrôleurs. Sinon, ils ne trouvent pas l'interface matérielle.
-    spawn_controllers_after_robot = RegisterEventHandler(
-        OnProcessExit(
-            target_action=spawn_entity_cmd,
-            on_exit=[jsb_spawner, gripper_spawner]
-        )
-    )
-
-    # --- 6. GAZEBO ET MONDE ---
-
-    world_path = os.path.join(pkg_tb3_autonomy, 'worlds', 'my_room.sdf')
-
-    # gazebo_cmd = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(
-    #         os.path.join(pkg_gazebo_ros, 'launch', 'gazebo.launch.py')
-    #     ),
-    #     launch_arguments={'world': world_path}.items()
-    # )
-    gazebo_ros_prefix = get_package_prefix('gazebo_ros')   # typiquement /opt/ros/humble
     ros_lib = os.path.join(gazebo_ros_prefix, 'lib')
-
     init_plugin = os.path.join(ros_lib, 'libgazebo_ros_init.so')
     factory_plugin = os.path.join(ros_lib, 'libgazebo_ros_factory.so')
 
@@ -142,30 +113,71 @@ def generate_launch_description():
         output='log'
     )
 
-
     gzclient_cmd = ExecuteProcess(
-            cmd=['gzclient'],
-            output='log'
+        cmd=['gzclient'],
+        output='log'
+    )
+
+    spawn_entity_node = Node(
+        package='gazebo_ros',
+        executable='spawn_entity.py',
+        arguments=[
+            '-topic', 'robot_description',
+            '-entity', 'my_custom_waffle',
+            '-x', '-2.0',
+            '-y', '-0.5',
+            '-z', '0.05'
+        ],
+        output='screen'
+    )
+
+    # Slight delay to ensure Gazebo is ready before spawning
+    spawn_entity_delayed = TimerAction(
+        period=2.0,
+        actions=[spawn_entity_node]
+    )
+
+    # =========================================================================
+    # 5. ROS 2 CONTROLLERS
+    # =========================================================================
+
+    jsb_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['joint_state_broadcaster', '-c', '/controller_manager', '--controller-manager-timeout', '120'],
+        output='screen'
+    )
+
+    gripper_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['gripper_controller', '-c', '/controller_manager', '--controller-manager-timeout', '120'],
+        output='screen'
+    )
+
+    # Launch controllers only after the robot is successfully spawned
+    spawn_controllers_event = RegisterEventHandler(
+        OnProcessExit(
+            target_action=spawn_entity_node,
+            on_exit=[jsb_spawner, gripper_spawner]
         )
-    # --- 7. NAVIGATION ET EXPLORATION ---
+    )
 
-    nav2_params = os.path.join(pkg_tb3_autonomy, 'params', 'my_nav2_params.yaml')
+    # =========================================================================
+    # 6. NAVIGATION & EXPLORATION
+    # =========================================================================
 
-    slam_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_nav2_bringup, 'launch', 'slam_launch.py')
-        ),
+    slam_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(pkg_nav2_bringup, 'launch', 'slam_launch.py')),
         launch_arguments={
             'use_sim_time': use_sim_time,
             'params_file': nav2_params,
-            'transform_timeout': '0.5' # Parfois utile d'augmenter si la simulation lag
+            'transform_timeout': '0.5'
         }.items()
     )
 
-    navigation_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_nav2_bringup, 'launch', 'navigation_launch.py')
-        ),
+    navigation_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(pkg_nav2_bringup, 'launch', 'navigation_launch.py')),
         launch_arguments={
             'use_sim_time': use_sim_time,
             'params_file': nav2_params,
@@ -173,7 +185,7 @@ def generate_launch_description():
         }.items()
     )
 
-    explore_cmd = Node(
+    explore_node = Node(
         package='explore_lite',
         executable='explore',
         name='explore_node',
@@ -190,32 +202,21 @@ def generate_launch_description():
             'gain_scale': 1.0,
             'transform_tolerance': 0.5,
         }]
-
-        # parameters=[{
-        #     'use_sim_time': True,
-        #     'robot_base_frame': 'base_link',
-        #     'costmap_topic': '/map',
-        #     'visualize': True,
-        #     'planner_frequency': 0.33,
-        #     'progress_timeout': 30.0,
-        #     'potential_scale': 3.0,
-        #     'orientation_scale': 0.0,
-        #     'gain_scale': 1.0,
-        #     'transform_tolerance': 0.3,
-        #     'min_frontier_size': 0.75,
-        # }]
     )
-    explore_delayed = TimerAction(period=12.0, actions=[explore_cmd])
 
-    # --- 8. AUTRES NODES (STEREO, RVIZ, ETC.) ---
+    # Delay exploration start to let SLAM stabilize
+    explore_delayed = TimerAction(period=12.0, actions=[explore_node])
 
-    stereo_proc = GroupAction(
+    # =========================================================================
+    # 7. VISION & AI
+    # =========================================================================
+
+    stereo_proc_group = GroupAction(
         actions=[
             PushRosNamespace('oakd'),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
-                    os.path.join(pkg_stereo_image_proc, 'launch', 'stereo_image_proc.launch.py')
-                ),
+                    os.path.join(pkg_stereo_image_proc, 'launch', 'stereo_image_proc.launch.py')),
                 launch_arguments={
                     'approximate_sync': 'True',
                     'use_sim_time': 'True',
@@ -226,7 +227,40 @@ def generate_launch_description():
         ]
     )
 
-    rviz_cmd = Node(
+    ai_node = Node(
+        package='tb3_autonomy',
+        executable='sim_yolo_depth',
+        name='ai_node',
+        output='screen',
+        parameters=[{
+            'weights': yolo_model_path,
+            'device': 'cpu',
+            'conf': 0.5,
+            'debug_view': True
+        }]
+    )
+
+    # =========================================================================
+    # 8. SUPERVISION & TOOLS
+    # =========================================================================
+
+    catch_node = Node(
+        package='tb3_autonomy',
+        executable='catch_node',
+        name='catch_node',
+        output='screen',
+        parameters=[{'use_sim_time': True, 'mode': 'sim'}],
+    )
+
+    bt_supervisor_node = Node(
+        package='tb3_autonomy',
+        executable='bt_supervisor',
+        name='bt_supervisor',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+    )
+
+    rviz_node = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
@@ -234,67 +268,41 @@ def generate_launch_description():
         parameters=[{'use_sim_time': True}],
         output='log'
     )
-    ai_node = Node(
-        package='tb3_autonomy',
-        executable='sim_yolo_depth',
-        name='ai_node',
-        output='screen',
-        parameters=[{
-            'weights': 'src/exploration_and_research_turtlebot/tb3_autonomy/yolo11n_red_cube.pt',
-            'device': 'cpu',
-            'conf': 0.5,
-            'debug_view': True
-        }]
-    )
 
-    catch_cmd = Node(
-        package='tb3_autonomy',
-        executable='catch_node',
-        name='catch_node',
-        output='screen',
-        parameters=[{'use_sim_time': True, 'mode': 'sim'}],  # ou 'auto'
-    )
-    spawn_entity_delayed = TimerAction(
-        period=2.0,
-        actions=[spawn_entity_cmd]
-    )
-    bt_supervisor_cmd = Node(
-        package='tb3_autonomy',
-        executable='bt_supervisor',
-        name='bt_supervisor',
-        output='screen',
-        parameters=[{'use_sim_time': True}],
-    )
-    start_logic_after_controllers = RegisterEventHandler(
+    # Start High-Level Logic only after controllers are ready (Gripper needs to be active)
+    start_logic_event = RegisterEventHandler(
         OnProcessExit(
             target_action=gripper_spawner,
-            on_exit=[bt_supervisor_cmd,catch_cmd, ai_node, explore_delayed]
+            on_exit=[bt_supervisor_node, catch_node, ai_node, explore_delayed]
         )
     )
 
+    # =========================================================================
+    # 9. FINAL LAUNCH DESCRIPTION
+    # =========================================================================
 
+    ld = LaunchDescription()
 
-    # --- 9. RETURN ---
-    return LaunchDescription([
-        # Environnement
-        set_gazebo_model_path,
-        env_lidar,
-        env_gl,
+    # Environment
+    for var in set_env_vars:
+        ld.add_action(var)
 
-        # Simu & Robot
-        gzserver_cmd,
-        gzclient_cmd,
-        robot_state_publisher_cmd,
-        spawn_entity_delayed , #spawn_entity_cmd,
-        spawn_controllers_after_robot,
-        # Navigation Stack
-        slam_cmd,
-        navigation_cmd,
-        #explore_delayed,
+    # Simulation & Robot
+    ld.add_action(gzserver_cmd)
+    ld.add_action(gzclient_cmd)
+    ld.add_action(robot_state_publisher_node)
+    ld.add_action(spawn_entity_delayed)
+    ld.add_action(spawn_controllers_event)
 
-        # Outils & Logique custom
-        rviz_cmd,
-        stereo_proc,
-        #catch_cmd
-        start_logic_after_controllers
-    ])
+    # Navigation
+    ld.add_action(slam_launch)
+    ld.add_action(navigation_launch)
+
+    # Vision & Tools
+    ld.add_action(rviz_node)
+    ld.add_action(stereo_proc_group)
+
+    # Logic (Delayed)
+    ld.add_action(start_logic_event)
+
+    return ld

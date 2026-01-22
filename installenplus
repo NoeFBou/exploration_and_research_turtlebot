@@ -1,3 +1,0 @@
-sudo apt install ros-humble-stereo-image-proc
-pip install ultralytics
-sudo apt install ros-humble-stereo-image-proc
