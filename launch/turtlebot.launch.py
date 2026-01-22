@@ -41,7 +41,10 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'use_sim_time': False,
-            'mode': 'real'
+            'mode': 'real',
+            'real_open_angle': 0,
+            'real_close_angle': 45, 
+            'real_support_angle': -10
         }]
     )
 

@@ -206,9 +206,10 @@ class CatchNode(Node):
 
         target_angle = close_deg if closed else open_deg
 
-        # Prepare the 16-channel array
         angles = [0] * num_channels
+
         angles[support_ch] = support_deg
+
         angles[gripper_ch] = target_angle
 
         msg = Int16MultiArray()
@@ -217,7 +218,6 @@ class CatchNode(Node):
 
         action = "CLOSE" if closed else "OPEN"
         self.get_logger().info(f"[REAL] Gripper {action} -> Ch{gripper_ch}: {target_angle}°")
-
 
 def main(args=None):
     rclpy.init(args=args)
